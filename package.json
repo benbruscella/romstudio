@@ -1,0 +1,59 @@
+{
+  "name": "rom-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ROM Studio — inspect original game binaries, understand their assembly, and build for the web",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "roms": "./dist/tools/src/cli.js"
+  },
+  "scripts": {
+    "compile": "tsc -p tsconfig.json",
+    "check": "npm run format:check && npm run lint && npm run typecheck",
+    "dev": "npm run compile && node dist/tools/src/cli.js dev",
+    "build": "npm run compile && node --max-opt=1 --no-concurrent-sparkplug dist/tools/src/cli.js build",
+    "build:game": "npm run compile && node --max-opt=1 --no-concurrent-sparkplug dist/tools/src/cli.js build-game",
+    "preview": "npm run compile && node dist/tools/src/cli.js preview",
+    "test": "npm run compile && node dist/tools/src/testing/run.js all",
+    "test:unit": "npm run compile && node dist/tools/src/testing/run.js unit",
+    "inspect": "npm run compile && node dist/tools/src/cli.js inspect",
+    "cli": "npm run compile && node --max-opt=1 --no-concurrent-sparkplug dist/tools/src/cli.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "lint": "eslint src eslint.config.js --max-warnings 0",
+    "lint:fix": "npm run lint -- --fix",
+    "test:integration": "npm run compile && node dist/tools/src/testing/run.js integration"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.10.13",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.14.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1"
+  },
+  "homepage": "https://romstud.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/benbruscella/romstudio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/benbruscella/romstudio/issues"
+  },
+  "files": [
+    "dist/tools/src/",
+    "src/",
+    "docs/",
+    "README.md",
+    "CONTRIBUTING.md"
+  ],
+  "overrides": {
+    "minimatch": "11.0.5"
+  }
+}

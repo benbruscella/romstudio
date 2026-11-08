@@ -1,0 +1,61 @@
+{
+  "id": "lemmings-alpha-flight",
+  "version": 2,
+  "title": "Lemmings \u00b7 Alpha Flight",
+  "system": "c64",
+  "timing": "pal-6569",
+  "joystickPort": 2,
+  "trainers": false,
+  "media": [
+    {
+      "name": "LEMMING0.D64",
+      "sha256": "0bf8fdde3c715154354624c034571d974f8f65d7a508e0a540a48dc962f91f44",
+      "boot": true
+    },
+    {
+      "name": "LEMMING1.D64",
+      "sha256": "8607c8830c36621219f624f44c2f2663c96571429d4439283d297c2ddf3656b8",
+      "boot": false
+    },
+    {
+      "name": "LEMMING2.D64",
+      "sha256": "2410d41f10ee8a7d2b5c636852f63be79cb95309077dd323e95c649f03cc7d7d",
+      "boot": false
+    }
+  ],
+  "launch": {
+    "file": "LEMMINGS+",
+    "loadAddress": 2049,
+    "entry": 2060,
+    "automatic": true
+  },
+  "bootstrap": {
+    "bytes": "a00078ee30d04e11d0e601b93141994003c8d0f74c4003",
+    "source": 16689,
+    "destination": 832,
+    "length": 256,
+    "instructions": 1030,
+    "cycles": 3656
+  },
+  "recovery": {
+    "stopAt": 8960,
+    "maxInstructions": 3000000,
+    "maxVariants": 50000
+  },
+  "menu": {
+    "stopAt": 37316,
+    "expectedBytes": [173, 119, 162, 205, 56, 203, 240, 20],
+    "maxInstructions": 30000000,
+    "maxVariants": 150000,
+    "maxBoundaryOperations": 100000,
+    "expectedFiles": ["ID", "IE", "PA", "CA", "CB"]
+  },
+  "publicAssets": [],
+  "notes": [
+    "Resolve SYS automatically; no LOAD or RUN prompt.",
+    "The startup scenario answers the 12 recovered Y/N trainer prompts with N and verifies the menu checkpoint.",
+    "Startup read order is ID, IE, PA, CA, CB. Other two-letter file roles remain unassigned.",
+    "Bootstrap register seeds are synthetic fixtures, not measured C64 power-on state."
+  ],
+  "mediaDirectory": "roms/c64/lemmings"
+}

@@ -1,0 +1,24 @@
+{
+  "id": "tetris-pal-ei-0",
+  "title": "Tetris",
+  "system": "nes",
+  "timing": "pal-2a07",
+  "mediaDirectory": "roms/nes/testris",
+  "mapper": 1,
+  "mirroring": "mapper-controlled",
+  "media": [
+    {
+      "name": "pal-ei-0 prg",
+      "role": "prg",
+      "sha256": "249278ba118b518e942c7fbd581349cc4cf7587427327eae3d9971d778632fc4",
+      "boot": true
+    },
+    {
+      "name": "nes-ei-0 chr",
+      "role": "chr",
+      "sha256": "23789834e66947081aa5d34efe092beb69a91273abc62089a8bb7c00f67ff751",
+      "boot": false
+    }
+  ],
+  "status": "recovery-pending"
+}

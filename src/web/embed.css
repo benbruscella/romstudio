@@ -1,0 +1,159 @@
+/* The library supplies navigation. The embedded player gives the viewport to
+   the original screen and keeps transport controls immediately alongside it. */
+body.embedded {
+  height: 100dvh;
+  overflow: hidden;
+}
+.embedded > header,
+.embedded main > .heading,
+.embedded main > footer,
+.embedded .scoreboard {
+  display: none;
+}
+.embedded main {
+  width: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding: 8px;
+}
+.embedded .layout {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 230px;
+  gap: 14px;
+  align-items: stretch;
+}
+.embedded #game {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 0;
+  border-radius: 4px;
+}
+.embedded .screen-frame {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+}
+.embedded canvas {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  aspect-ratio: auto;
+}
+@supports (width: 1cqw) {
+  .embedded canvas {
+    width: min(100cqw, calc(100cqh * 4 / 3));
+    height: min(100cqh, calc(100cqw * 3 / 4));
+    object-fit: fill;
+  }
+}
+.embedded .game-actions {
+  padding: 7px;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.embedded .game-actions button {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+.embedded aside {
+  padding: 0 2px 0 0;
+  min-height: 0;
+  overflow: auto;
+}
+.embedded aside > .eyebrow,
+.embedded aside > h2,
+.embedded aside > .intro {
+  display: none;
+}
+.embedded aside > #status {
+  display: inline-flex;
+  margin-bottom: 10px;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+.embedded .transport button {
+  padding: 10px;
+}
+.embedded .example {
+  font-size: 12px;
+}
+.embedded .speed {
+  margin: 14px 0 16px;
+}
+.embedded .sound {
+  margin-bottom: 16px;
+  gap: 8px;
+}
+.embedded .sound span {
+  font-size: 10px;
+}
+.embedded .help {
+  padding-top: 10px;
+}
+.embedded .help h3 {
+  margin-bottom: 10px;
+}
+.embedded details {
+  padding: 11px 0;
+}
+.embedded .outcome {
+  padding: 22px 18px;
+}
+.embedded .outcome strong {
+  font-size: 24px;
+}
+@media (max-width: 700px) {
+  body.embedded {
+    height: auto;
+    overflow: auto;
+  }
+  .embedded main {
+    height: auto;
+    padding-top: 62px;
+  }
+  .embedded .layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .embedded #game {
+    height: calc(100dvh - 80px);
+    min-height: 300px;
+  }
+  .embedded aside {
+    overflow: visible;
+  }
+  .embedded .transport {
+    position: fixed;
+    top: 6px;
+    left: 8px;
+    right: 8px;
+    z-index: 10;
+    background: var(--bg);
+    padding: 4px;
+    border-radius: 6px;
+  }
+  .embedded .touch {
+    margin: 5px 0;
+  }
+  .embedded .touch button {
+    min-width: 40px;
+    padding: 7px;
+    margin: 2px;
+  }
+  .embedded aside > #status {
+    margin-top: 6px;
+  }
+  .embedded .game-actions {
+    flex-wrap: nowrap;
+  }
+}

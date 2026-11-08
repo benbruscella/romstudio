@@ -1,0 +1,77 @@
+name: Check, build and deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Keep main builds in order so an older, slower recovery cannot publish after
+# a newer merge. GitHub retains the newest pending run in this group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Source checks and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:unit
+
+  build:
+    name: Verify original games and build site
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Fetch approved pinned game inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist/ci-inputs
+          gh release download build-inputs --repo "$GITHUB_REPOSITORY" --pattern rom-studio-media.json.gz --dir dist/ci-inputs
+      - name: Verify and restore media by recipe identity
+        run: npm run cli -- media import dist/ci-inputs/rom-studio-media.json.gz
+      - name: Test real-media recovery and delivery
+        run: npm run test:integration
+      - name: Build verified static site for romstud.io
+        run: npm run build -- --domain romstud.io
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v5
+        id: deployment

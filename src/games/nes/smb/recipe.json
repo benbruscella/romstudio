@@ -1,0 +1,24 @@
+{
+  "id": "smb-pal-sm-0",
+  "title": "Super Mario Bros.",
+  "system": "nes",
+  "timing": "pal-2a07",
+  "mediaDirectory": "roms/nes/smb",
+  "mapper": 0,
+  "mirroring": "vertical",
+  "media": [
+    {
+      "name": "pal-sm-0 prg",
+      "role": "prg",
+      "sha256": "75508b83d54b643ca551430d56ea4337ea7fe9690baa8c06ef3c356ceee3bd39",
+      "boot": true
+    },
+    {
+      "name": "hvc-sm-0 chr",
+      "role": "chr",
+      "sha256": "6ae7ffd9795d670954b76c19706d4f355b53f49c38a1da14027faee2c9266f10",
+      "boot": false
+    }
+  ],
+  "status": "recovery-pending"
+}

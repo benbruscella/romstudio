@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'"
+    />
+    <title>ROM Studio · Game</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="wordmark" href="./">ROM Studio<span class="dot">▦</span></a
+      ><span class="edition"
+        ><span id="system-name"></span> <span> / </span> <span id="edition"></span
+      ></span>
+    </header>
+    <main>
+      <div class="heading">
+        <div>
+          <p class="eyebrow" id="eyebrow"></p>
+          <h1 id="game-title">Loading game…</h1>
+        </div>
+        <span id="status" role="status" class="status">Loading…</span>
+      </div>
+      <div class="layout">
+        <section id="game" aria-label="Game">
+          <div class="scoreboard" id="scoreboard" aria-label="Game statistics"></div>
+          <div class="screen-frame">
+            <canvas
+              id="screen"
+              width="320"
+              height="200"
+              tabindex="0"
+              role="img"
+              aria-label="Game screen"
+              aria-describedby="keyboard-help"
+            ></canvas>
+          </div>
+          <div id="outcome" class="outcome" hidden aria-live="polite">
+            <strong id="result-title"></strong>
+            <p id="result-detail"></p>
+          </div>
+          <div class="game-actions">
+            <div id="title-actions" class="title-actions"></div>
+            <button id="fullscreen" class="quiet">Fullscreen</button>
+          </div>
+          <div class="touch" aria-label="Touch controls">
+            <button data-key="ArrowUp" aria-label="Move up">↑</button>
+            <div>
+              <button data-key="ArrowLeft" aria-label="Move left">←</button
+              ><button data-key="ArrowDown" aria-label="Move down">↓</button
+              ><button data-key="ArrowRight" aria-label="Move right">→</button
+              ><button data-key="Space" aria-label="Fire" class="fire">Fire</button>
+            </div>
+          </div>
+        </section>
+        <aside>
+          <p class="eyebrow" id="goal"></p>
+          <h2 id="heading"></h2>
+          <p class="intro" id="description"></p>
+          <div class="transport">
+            <button id="play" class="primary" disabled>Loading…</button
+            ><button id="pause" disabled>Pause</button>
+          </div>
+          <button id="example" class="example" disabled>Play checked example <span>↗</span></button>
+          <div class="speed">
+            Game speed
+            <div id="speed" role="group" aria-label="Game speed">
+              <button id="speed-1" data-speed="1" aria-pressed="true">1×</button
+              ><button id="speed-4" data-speed="4" aria-pressed="false">4×</button
+              ><button id="speed-8" data-speed="8" aria-pressed="false">8×</button>
+            </div>
+          </div>
+          <div class="sound">
+            <button id="sound" aria-pressed="false">Enable sound</button
+            ><span id="sound-note" role="status">Sound starts after an interaction.</span>
+          </div>
+          <div class="help" id="keyboard-help">
+            <h3>Keyboard</h3>
+            <div id="help-lines"></div>
+          </div>
+          <details>
+            <summary>About the example</summary>
+            <p id="example-about"></p>
+          </details>
+          <details>
+            <summary>Learn the code</summary>
+            <p>The game runs translated original instructions.</p>
+            <p id="learn-links"></p>
+          </details>
+        </aside>
+      </div>
+      <footer>
+        <span>Original game instructions, translated with ROM Studio.</span
+        ><span
+          ><span id="hardware-note"></span>
+          <a href="./manifest.json">Build &amp; verification</a></span
+        >
+      </footer>
+    </main>
+    <script type="module" src="./web/app.js"></script>
+  </body>
+</html>
