@@ -25,7 +25,21 @@ export async function buildSm64Web(options: Sm64PlaybackOptions = {}) {
  * re-verifying. The manifest marks verification stale unless the capture was
  * verified for these exact sources; `verify-game` refreshes it. */
 export async function packageSm64Web(options: Sm64PlaybackOptions = {}) {
-  const capture = await loadSm64Capture(options);
+  let capture: Awaited<ReturnType<typeof loadSm64Capture>>;
+  try {
+    capture = await loadSm64Capture(options);
+  } catch (error) {
+    if (!(error instanceof Diagnostic) || error.code !== 'SM64_CAPTURE') {
+      throw error;
+    }
+    // A clean dist/ has no capture: run the original recovery once and save
+    // it. The static replay comparison stays in verification.
+    options.onProgress?.(
+      'No SM64 capture yet; running the original recovery once (no comparison)…',
+    );
+    await prepareSm64Playback({ ...options, skipReplay: true });
+    capture = await loadSm64Capture(options);
+  }
   options.onProgress?.(
     capture.current
       ? 'Packaging SM64 from the capture verified for the current sources…'
@@ -229,7 +243,7 @@ export async function packageSm64Playback(
     titleId: 'sm64',
     gameKey: 'n64/sm64',
     system: 'n64',
-    build: { status: 'partial-title', playable: true, artifact: 'static-n64-worker-study' },
+    build: { status: 'release-ready', playable: true, artifact: 'static-n64-worker-study' },
     backend: {
       cpu: 'mips3-vr4300',
       signalProcessor: 'n64-rsp',

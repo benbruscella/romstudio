@@ -16,7 +16,7 @@ Integration tests and the full build require the pinned originals described in [
 ## Library and learning
 
 - On the development library (4175), use **Learn** and **Try study** to test the experimental games.
-- N64 browser play has not passed acceptance. Use its **Learn** studies below; a work-in-progress player or a locally built **Try study** entry is not a substitute for the required sixth game.
+- SM64 plays at full speed on the castle grounds; the title screen still runs below 25 fps until audio moves to the play tier. Its **Learn** studies are below.
 - Refresh `/c64/nebulus` and `/nes/tetris/learn`. Back and Forward should restore the right view.
 - Open **Assembly → TypeScript** in Learn, search an address and select instructions. Original bytes and generated functions should agree; named chapters explain the game-specific meaning.
 - At laptop and desktop sizes, the screen and run control should fit without duplicate large headings. On a narrow phone viewport, controls and learning content must remain reachable without horizontal scrolling.

@@ -44,11 +44,11 @@ export function serveAnalysis<Input, Output>(run: (input: Input) => Promise<Outp
   process.once('message', async (input) => {
     try {
       const value = await run(input as Input);
-      process.send!({ ok: true, value }, () => process.disconnect());
+      process.send!({ ok: true, value }, () => process.disconnect?.());
     } catch (error) {
       process.send!(
         { ok: false, error: error instanceof Error ? error.message : String(error) },
-        () => process.disconnect(),
+        () => process.disconnect?.(),
       );
     }
   });

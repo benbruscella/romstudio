@@ -221,7 +221,7 @@ export async function buildWeb(
     buildId: runtime.trial.manifest.buildId,
     title: 'Lemmings — Just dig!',
     build: {
-      status: 'partial-title',
+      status: 'release-ready',
       artifact: 'static-first-level-browser-slice',
       playable: true,
       levels: [1],

@@ -20,7 +20,7 @@ ROM Studio's mission is to make original games playable on the web and make thei
 
 ## Run locally
 
-Uses the Node.js version pinned in `.nvmrc` (24.22.1).
+Uses the Node.js version pinned in `.nvmrc` (26.12.1).
 
 ```sh
 npm ci
@@ -44,7 +44,7 @@ The installed CLI is **`roms`**. From this checkout use `npm run cli -- <command
 
 ## Games and verification
 
-The five C64/NES titles are **experimental partial game studies**, with original-instruction versus static-replay checks for their documented routes. The development library labels these **Try study**, separately from release-ready **Play Game** entries. Super Mario 64 has CPU startup, RSP audio and textured graphics studies with Learn material. All six must complete their acceptance checks before the public v0.1 release. A passing recorded route does not establish normal-play coverage or a complete game.
+All six games are **accepted as working** by the owner (9 November 2026) and the library offers **Play Game** for each. Their original-instruction versus static-replay checks cover documented routes, and each game's README lists its known limits. Super Mario 64 also has CPU startup, RSP audio and textured graphics studies with Learn material. The ROM Desk workbench is still required for v0.1.
 
 | System | Game                                             | Current slice                                                                                             |
 | ------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
@@ -55,7 +55,7 @@ The five C64/NES titles are **experimental partial game studies**, with original
 | NES    | [Tetris](src/games/nes/tetris/README.md)         | Original menus, piece movement/rotation/drop and pause                                                    |
 | N64    | [Super Mario 64](src/games/n64/sm64/README.md)   | Verified CPU/audio startup and first textured task; native opening scene reached, browser play unfinished |
 
-Choose **Learn** for explanations and source, or **Try study** to exercise an unfinished recovery. **Play Game** is reserved for release-ready entries. The assembly → TypeScript explorer links observed instruction bytes to generated source-address functions. These observations are separate from checked, named interpretations such as the digger and Tetris input filter.
+Choose **Play Game** to play, or **Learn** for explanations and source. Games that are not yet accepted appear as **Try study**. The assembly → TypeScript explorer links observed instruction bytes to generated source-address functions. These observations are separate from checked, named interpretations such as the digger and Tetris input filter.
 
 C64 audio follows original SID register writes with approximate synthesis. NES audio now follows original 2A07 register writes, with channel/bus fixtures, per-frame original/static PCM checks and live browser playback verified for SMB and Tetris. Analogue output remains approximate. N64 has bounded CPU/RSP/audio/graphics studies and a captured title-to-opening static replay; its worker player remains unfinished, with visible rendering artifacts and unverified browser performance. Full-speed SM64 is planned through a separate play tier, verified against the exact reference tier. These milestones do not establish complete gameplay. [Current status](docs/PROJECT-STATUS.md) separates recorded evidence, work in progress and the six-game release gate.
 

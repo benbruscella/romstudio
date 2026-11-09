@@ -73,6 +73,10 @@ Advanced rewind/time travel, pixel-to-instruction archaeology, semantic breakpoi
 
 Release acceptance includes checks/tests on the actual candidate, original/static replay, game-specific behavior assertions, source mapping checks, controls/audio/performance review and all six games in the workbench. Stepping must agree with ordinary execution at the same machine boundary, and paused inspection must not advance the game. Unsupported paths retain diagnostic provenance. Where a game has a separate play tier, release acceptance also compares it with the reference tier on recorded input routes: game state at frame boundaries, PCM and pictures within their declared tolerance.
 
+### Six games accepted as working — 9 November 2026
+
+The owner, having played them, accepted all six games as working: Lemmings, Nebulus, Elite, Super Mario Bros., Tetris and Super Mario 64. Their packages are now `release-ready` and the library offers **Play Game**. Each game's documented limits still apply and remain in its README and status entry; for SM64 these include the title screen below 25 fps and unaccepted saves and progression. `build --deploy` still also requires verification passed for the current sources. The ROM Desk workbench remains required for v0.1.
+
 ### Build, test and deploy — decided 9 November 2026
 
 The owner separated building from testing. **Build packages; tests verify; deploy is strict.** Previously each game's build reran original recovery and its original/static comparison, so a renderer fix took half an hour to reach `npm run dev`.
@@ -83,7 +87,7 @@ The owner separated building from testing. **Build packages; tests verify; deplo
 | Test   | `npm test`, `npm run cli -- verify-game <system/game>`                              | Reruns original recovery and the original/static comparisons, then records the result. Integration tests use it.                                                                                                                                 |
 | Deploy | CI: `npm run build -- --deploy --domain romstud.io` after `npm test -- integration` | Requires every required game to be release-ready and verified for the current sources. There is no separate release script.                                                                                                                      |
 
-A recovery capture is reused until the media, recipe or recovery scenario changes; it is input for packaging, never evidence that changed code passed. SM64 is the first game split this way. Until the C64 and NES builders gain captures, build reuses their last verified package and `verify-game` refreshes it; their combined recovery takes over half an hour. The scripts were reduced to `dev`, `build`, `test`, `check`, `fix` and `cli`.
+A recovery capture is reused until the media, recipe or recovery scenario changes; it is input for packaging, never evidence that changed code passed. `dist/` stays disposable: a build creates any missing capture or package, and only verification runs the comparisons. SM64 is the first game split this way. Until the C64 and NES builders gain captures, build reuses their last verified package and `verify-game` refreshes it; their combined recovery takes over half an hour. The scripts were reduced to `dev`, `build`, `test`, `check`, `fix` and `cli`.
 
 The strict deploy build enforces game readiness. Workbench implementation, acceptance checks and its release gate still need to be completed; passing the present game gate alone will not satisfy the expanded release scope. See [Testing](TESTING.md).
 

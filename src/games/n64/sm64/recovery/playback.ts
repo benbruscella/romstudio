@@ -30,6 +30,9 @@ export interface Sm64PlaybackOptions extends StartupOptions {
   /** Replay current static code against an explicitly checked earlier original
    * endpoint/PCM stream. This does not rerun original recovery under new source. */
   replayFixtureFingerprint?: string;
+  /** Build: capture the original run for packaging but skip the static
+   * replay comparison, which belongs to verification (`verify-game`). */
+  skipReplay?: boolean;
 }
 
 /** Passive build-time observer. Hash exact stereo values and source rates,
@@ -205,9 +208,14 @@ export async function prepareSm64Playback(options: Sm64PlaybackOptions = {}) {
   const cache = join(directory, fingerprint);
   try {
     const record = JSON.parse(await readFile(join(cache, 'record.json'), 'utf8')) as PlaybackRecord;
+    if (record.verification.referenceReplay === 'not-run' && !options.skipReplay) {
+      // Recovery-only capture: verification reruns recovery and the replay.
+      throw Object.assign(new Error('Recovery-only capture.'), { code: 'ENOENT' });
+    }
     if (
       record.fingerprint !== fingerprint ||
-      record.verification.referenceReplay !== 'passed' ||
+      (record.verification.referenceReplay !== 'passed' &&
+        record.verification.referenceReplay !== 'not-run') ||
       record.verification.checks.some((check) => !check.passed) ||
       JSON.stringify(record.sourceSnapshot) !== JSON.stringify(modelSources)
     ) {
@@ -374,44 +382,53 @@ export async function prepareSm64Playback(options: Sm64PlaybackOptions = {}) {
   options.onProgress?.(
     `Replaying original menus using ${programs.cpu.instructions.length} static CPU and ${programs.rsp.instructions.length} RSP instruction variants…`,
   );
-  const cpu = (await importStaticProgram<Vr4300Machine>(programs.cpu)) as Vr4300Program,
-    rsp = (await importStaticProgram<RspMachine>(programs.rsp)) as RspProgram;
-  const replay = new N64System(media.rom, 0, 512, true);
-  replay.memory.ram.bytes.set(ram);
-  replay.memory.signal.memory.set(signal);
-  replay.enableRsp(rsp.step, rsp.prepareLinear, rsp.runLocal);
-  replay.restore(title);
-  const staticPcm = observePcm(replay);
-  sm64OpeningControls(replay);
-  run(replay, cpu.step, 284, options.onProgress, undefined, cpu.idleAddresses);
-  const expectedPcm = originalPcm(),
+  const expectedPcm = originalPcm();
+  let actualPcm: typeof expectedPcm | undefined;
+  let checks: { name: string; passed: boolean }[] = [];
+  if (options.skipReplay) {
+    options.onProgress?.(
+      'Saved the original capture; the static replay comparison runs in verification, not build.',
+    );
+  } else {
+    const cpu = (await importStaticProgram<Vr4300Machine>(programs.cpu)) as Vr4300Program,
+      rsp = (await importStaticProgram<RspMachine>(programs.rsp)) as RspProgram;
+    const replay = new N64System(media.rom, 0, 512, true);
+    replay.memory.ram.bytes.set(ram);
+    replay.memory.signal.memory.set(signal);
+    replay.enableRsp(rsp.step, rsp.prepareLinear, rsp.runLocal);
+    replay.restore(title);
+    const staticPcm = observePcm(replay);
+    sm64OpeningControls(replay);
+    run(replay, cpu.step, 284, options.onProgress, undefined, cpu.idleAddresses);
     actualPcm = staticPcm();
-  const checks = [
-    {
-      name: 'original-vs-static-processors-devices-and-clock',
-      passed:
-        JSON.stringify(compactN64Checkpoint(native)) ===
-        JSON.stringify(compactN64Checkpoint(replay)),
-    },
-    {
-      name: 'original-vs-static-rdram',
-      passed: sha256(native.memory.ram.bytes) === sha256(replay.memory.ram.bytes),
-    },
-    {
-      name: 'original-vs-static-sp-memory',
-      passed: sha256(native.memory.signal.memory) === sha256(replay.memory.signal.memory),
-    },
-    {
-      name: 'original-controller-traffic',
-      passed: native.memory.serial.controllerReads > title.devices.serial.controllerReads + 100,
-    },
-    {
-      name: 'original-vs-static-stereo-pcm',
-      passed: expectedPcm.samples > 0 && JSON.stringify(expectedPcm) === JSON.stringify(actualPcm),
-    },
-  ];
-  if (checks.some((check) => !check.passed)) {
-    throw new Diagnostic('SM64_PLAYBACK_PARITY', JSON.stringify(checks));
+    checks = [
+      {
+        name: 'original-vs-static-processors-devices-and-clock',
+        passed:
+          JSON.stringify(compactN64Checkpoint(native)) ===
+          JSON.stringify(compactN64Checkpoint(replay)),
+      },
+      {
+        name: 'original-vs-static-rdram',
+        passed: sha256(native.memory.ram.bytes) === sha256(replay.memory.ram.bytes),
+      },
+      {
+        name: 'original-vs-static-sp-memory',
+        passed: sha256(native.memory.signal.memory) === sha256(replay.memory.signal.memory),
+      },
+      {
+        name: 'original-controller-traffic',
+        passed: native.memory.serial.controllerReads > title.devices.serial.controllerReads + 100,
+      },
+      {
+        name: 'original-vs-static-stereo-pcm',
+        passed:
+          expectedPcm.samples > 0 && JSON.stringify(expectedPcm) === JSON.stringify(actualPcm),
+      },
+    ];
+    if (checks.some((check) => !check.passed)) {
+      throw new Diagnostic('SM64_PLAYBACK_PARITY', JSON.stringify(checks));
+    }
   }
   await assertSourceSnapshot(modelSources);
   await mkdir(cache, { recursive: true });
@@ -433,7 +450,7 @@ export async function prepareSm64Playback(options: Sm64PlaybackOptions = {}) {
     JSON.stringify({
       encoding: 'float64le-left-right-source-rate',
       original: expectedPcm,
-      static: actualPcm,
+      static: actualPcm ?? null,
     }),
   );
   put('title.png', encodePng(320, 240, titlePixels));
@@ -455,7 +472,7 @@ export async function prepareSm64Playback(options: Sm64PlaybackOptions = {}) {
     origin,
     mediaSha256: media.identity.canonicalSha256,
     verification: {
-      referenceReplay: 'passed',
+      referenceReplay: options.skipReplay ? 'not-run' : 'passed',
       hardwareParity: 'unverified',
       gameplay: 'unverified',
       pixelPrecision: 'functional-approximation',
@@ -501,8 +518,9 @@ export async function loadSm64Capture(options: StartupOptions = {}) {
     } catch {
       continue;
     }
+    const replay = record.verification.referenceReplay;
     if (
-      record.verification.referenceReplay !== 'passed' ||
+      (replay !== 'passed' && replay !== 'not-run') ||
       record.verification.checks.some((check) => !check.passed) ||
       (record.mediaSha256 && record.mediaSha256 !== media.identity.canonicalSha256) ||
       packagedFiles.some((file) => !record.files[file])
@@ -520,7 +538,14 @@ export async function loadSm64Capture(options: StartupOptions = {}) {
     }
     candidates.push({ root, record, current, time: (await stat(root)).mtimeMs });
   }
-  candidates.sort((a, b) => Number(b.current) - Number(a.current) || b.time - a.time);
+  // Prefer current sources, then a passed replay, then the newest capture.
+  const passed = (record: PlaybackRecord) => record.verification.referenceReplay === 'passed';
+  candidates.sort(
+    (a, b) =>
+      Number(b.current) - Number(a.current) ||
+      Number(passed(b.record)) - Number(passed(a.record)) ||
+      b.time - a.time,
+  );
   const chosen = candidates[0];
   if (!chosen) {
     throw new Diagnostic(
@@ -544,7 +569,8 @@ export async function loadSm64Capture(options: StartupOptions = {}) {
     record: chosen.record,
     files,
     media,
-    current: chosen.current,
+    // Verification applies only to a passed replay of these exact sources.
+    current: chosen.current && passed(chosen.record),
   };
 }
 

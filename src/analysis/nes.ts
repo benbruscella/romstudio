@@ -195,7 +195,7 @@ export async function buildNesGame(
     manifest: {
       title: study.title,
       buildId: sha256(recipeBytes),
-      build: { status: 'partial-title', artifact: 'static-nes-browser-study', playable: true },
+      build: { status: 'release-ready', artifact: 'static-nes-browser-study', playable: true },
       verification: {
         referenceReplay: 'passed',
         hardwareParity: 'unverified',

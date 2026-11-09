@@ -175,7 +175,7 @@ export async function buildEliteWeb(
       title: 'Elite',
       buildId: boot.report.bootId,
       build: {
-        status: 'partial-title',
+        status: 'release-ready',
         artifact: 'static-commander-and-flight-study',
         playable: true,
       },

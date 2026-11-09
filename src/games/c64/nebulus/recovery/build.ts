@@ -261,7 +261,7 @@ export async function buildNebulusWeb(
       buildId: start.boot.report.bootId,
       title: 'Nebulus — Tower Toppler',
       build: {
-        status: 'partial-title',
+        status: 'release-ready',
         artifact: 'static-first-tower-browser-slice',
         playable: true,
         towers: [1],

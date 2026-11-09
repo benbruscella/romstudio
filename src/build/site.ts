@@ -128,11 +128,24 @@ export async function buildSite(
       await put(asset, bytes);
       game.media.push({ name: medium.name, sha256: medium.sha256, bytes: bytes.length, asset });
     }
-    if (installed && options.rebuild && 'package' in installed) {
-      // Build packages from the saved recovery capture with the current code.
-      // Games without a capture split keep their last verified package until
-      // verify-game (or the integration tests) refreshes it.
-      await installed.package(options.onProgress ? { onProgress: options.onProgress } : {});
+    if (installed && options.rebuild) {
+      const progress = options.onProgress ? { onProgress: options.onProgress } : {};
+      if ('package' in installed) {
+        // Package from the saved recovery capture with the current code; the
+        // game creates the capture first when dist/ is clean.
+        await installed.package(progress);
+      } else if (
+        !(await lstat(join(gameBuildDirectory(key), 'manifest.json')).then(
+          () => true,
+          () => false,
+        ))
+      ) {
+        // dist/ is disposable. Without a capture split, this game's builder
+        // recovers and verifies once; later builds reuse its package until
+        // verify-game refreshes it.
+        options.onProgress?.(`Building ${key} for the first time (recovery and verification)…`);
+        await installed.web(progress);
+      }
     }
     if (installed) {
       try {
