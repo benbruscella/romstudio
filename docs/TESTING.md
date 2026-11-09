@@ -5,13 +5,13 @@ Use the Node version in `.nvmrc`, then run:
 ```sh
 npm ci
 npm run check
-npm run test:unit
+npm test -- unit
 npm run cli -- identify roms
-npm run test:integration
+npm test -- integration
 npm run dev -- --port 4175
 ```
 
-Integration tests and the full build require the pinned originals described in [ROMS.md](ROMS.md). A source-only checkout can run checks, unit tests and `npm run dev` to browse the learning material. A normal release `build` currently rejects unfinished targets; the six-game gate must pass before the site is ready to publish.
+Integration tests and the full build require the pinned originals described in [ROMS.md](ROMS.md). A source-only checkout can run checks, unit tests and `npm run dev` to browse the learning material. `npm run build` packages games for local review; only `build --deploy` enforces the six-game gate before publishing. Integration tests run game verification: original recovery and original/static comparison for the current sources.
 
 ## Library and learning
 
@@ -34,12 +34,21 @@ Integration tests and the full build require the pinned originals described in [
 
 C64 sound is approximate SID synthesis. NES sound follows original PAL APU register writes with approximate analogue output. Both NES games pass original/static per-frame PCM replay and live browser audio checks; broader songs/effects and physical-console parity remain unverified. Startup runs without a Play click; use Enable sound or a game key to unlock audio, and confirm that doing so does not reset the game. A recovery-gap message is a real unsupported path: record the game, the route from Restart and the last keys rather than treating it as a successful test.
 
+## Execution tiers
+
+Where a game has a separate [play tier](ARCHITECTURE.md#execution-tiers), currently planned only for SM64, check it against the reference tier:
+
+- Replay the recorded opening and castle routes on both tiers. Game state at frame boundaries and the PCM stream must match. Pictures must match exactly, or stay within the declared tolerance for parallel or GPU drawing.
+- Confirm unrecognized microcode runs its original instructions rather than stopping or being guessed.
+- Pause Play and open Desk: the game must continue from the same state on the reference tier, without a reset.
+- Measure full speed in the actual browser build at the game's regional rate, with sound running.
+
 ## Workbench — required for v0.1
 
 The core debugger is not implemented yet. For every game in [the release scope](RELEASES.md), acceptance must include:
 
 - Load the supported original media and verify identity; mismatched versions remain identifiable rather than executing as a different build.
-- Run, pause, restart and step actual instructions/frames; compare stepped and ordinary execution at the same boundary. Identify N64 CPU/RSP separately.
+- Run, pause, restart and step actual instructions/frames on the reference tier; compare stepped and ordinary execution at the same boundary. Identify N64 CPU/RSP separately.
 - Follow the current instruction between bytes, assembly and generated TypeScript, retaining bank/epoch/address-space identity and annotation limits.
 - Inspect registers/flags/memory without advancing paused state, then hit an address breakpoint and resume without losing device work.
 - Check basic system diagrams against the modeled devices and identify source attribution and simplifications.
@@ -52,8 +61,8 @@ These checks must be implemented and added to release acceptance; the existing s
 After all six games and the workbench meet [release acceptance](RELEASES.md), verify the production artifact:
 
 ```sh
-npm run build -- --domain romstud.io
-npm run preview -- --port 4176
+npm run build -- --deploy --domain romstud.io
+npm run cli -- preview --port 4176
 ```
 
 This strict build must report six ready games. An explicit `--studies` export is useful development evidence and does not pass this release condition.

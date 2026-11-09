@@ -6,7 +6,7 @@ The README states the mission; Releases is the durable scope/decision record; In
 
 | Guide                                     | What it answers                                                                                |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| [Releases and decisions](RELEASES.md)     | Committed v0.1 scope: six games and the workbench; retained project memory                     |
+| [Releases and decisions](RELEASES.md)     | Committed v0.1 scope: six games and the workbench; execution tiers; retained project memory    |
 | [Specification](SPEC.md)                  | What ROM Studio is trying to achieve and how support is judged                                 |
 | [Project status](PROJECT-STATUS.md)       | Implementation progress, recorded evidence and unfinished acceptance checks                    |
 | [CLI](CLI.md)                             | How to identify media, run the library and inspect assembly                                    |

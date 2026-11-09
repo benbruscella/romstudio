@@ -33,8 +33,9 @@ Start with the original bytes:
 
 Build and play:
   roms dev [--port 4170]                Serve the system → game library
-  roms build [--domain <host>] [--base /path/] [--studies]  Verify and build dist/site
-  roms build-game <system/game>        Build one registered platform version
+  roms build [--domain <host>] [--base /path/] [--deploy]  Build game packages and dist/site
+  roms build-game <system/game>        Package one game with the current code
+  roms verify-game <system/game>       Rerun recovery and original/static verification
   roms preview [--port 4170]            Serve the existing static site
 
 CI media inputs:
@@ -69,7 +70,7 @@ function argumentsFor(args: string[]): { files: string[]; flags: Record<string, 
     flags: Record<string, string> = {};
   for (let n = 0; n < args.length; n++) {
     const arg = args[n]!;
-    if (arg === '--json' || arg === '--studies') {
+    if (arg === '--json' || arg === '--deploy') {
       if (flags[arg.slice(2)]) {
         throw new Diagnostic('CLI_OPTION', `Duplicate ${arg}.`);
       }
@@ -151,9 +152,9 @@ async function main(): Promise<void> {
       'Use roms media bundle [--out <file>] or roms media import <bundle.json.gz>.',
     );
   }
-  if (command === 'build-game') {
+  if (command === 'build-game' || command === 'verify-game') {
     if (files.length > 1 || (files.length && flags.title)) {
-      throw new Diagnostic('CLI_INPUT', 'Use build-game <name> or --title <name>.');
+      throw new Diagnostic('CLI_INPUT', `Use ${command} <name> or --title <name>.`);
     }
     if (files[0]) {
       flags.title = files.shift()!;
@@ -161,7 +162,10 @@ async function main(): Promise<void> {
     if (!flags.title) {
       throw new Diagnostic('CLI_INPUT', 'Choose a game: ' + Object.keys(titles).join(', '));
     }
-    command = 'web';
+    // verify-game always recovers and compares; build-game packages from the
+    // saved capture when the game supports it.
+    const selected = titles[resolveTitleId(flags.title, flags.system)];
+    command = command === 'build-game' && 'package' in selected ? 'package' : 'web';
   }
   if (command === 'build' || command === 'dev' || command === 'preview') {
     if (files.length) {
@@ -180,9 +184,10 @@ async function main(): Promise<void> {
     if (command !== 'preview') {
       await buildSite({
         outputDirectory,
-        rebuild: command === 'build',
-        includeStudies: command === 'dev' || flags.studies === 'true',
-        requireReady: command === 'build' && flags.studies !== 'true',
+        rebuild: true,
+        includeStudies: flags.deploy !== 'true',
+        requireReady: flags.deploy === 'true',
+        requireVerified: flags.deploy === 'true',
         ...(flags.base ? { basePath: flags.base } : {}),
         ...(flags.domain ? { domain: flags.domain } : {}),
         onProgress: (message) => console.error(message),
@@ -204,7 +209,7 @@ async function main(): Promise<void> {
       async () => {
         await buildSite({
           outputDirectory,
-          rebuild: false,
+          rebuild: true,
           includeStudies: true,
           ...(flags.base ? { basePath: flags.base } : {}),
           ...(flags.domain ? { domain: flags.domain } : {}),
@@ -371,7 +376,7 @@ async function main(): Promise<void> {
     }
     return;
   }
-  if (command === 'web' || command === 'play') {
+  if (command === 'web' || command === 'package' || command === 'play') {
     if (files.length) {
       throw new Diagnostic('CLI_INPUT', `${command} takes named options only.`);
     }
@@ -382,8 +387,11 @@ async function main(): Promise<void> {
       outputDirectory,
       onProgress: (message: string) => console.error(message),
     };
-    if (command === 'web') {
-      const result = await title.web(options);
+    if (command === 'web' || command === 'package') {
+      const result =
+        command === 'package' && 'package' in title
+          ? await title.package(options)
+          : await title.web(options);
       console.log(
         JSON.stringify(
           {

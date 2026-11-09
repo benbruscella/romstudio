@@ -9,12 +9,12 @@ nvm install
 nvm use
 npm ci
 npm run check
-npm run test:unit
+npm test -- unit
 npm run cli -- identify roms
 npm run dev
 ```
 
-Use the Node version pinned in `.nvmrc` (currently 24.22.1). Original game media are local inputs under `roms/`; they are not included in the source repository. Generated game bytes and all analysis output belong under ignored `dist/`. Synthetic tests must work without private media. Use `npm test` for integration tests when you have the pinned inputs.
+Use the Node version pinned in `.nvmrc` (currently 24.22.1). Original game media are local inputs under `roms/`; they are not included in the source repository. Generated game bytes and all analysis output belong under ignored `dist/`. Synthetic tests must work without private media. Use `npm test` for integration tests, including game verification, when you have the pinned inputs.
 
 ## Add a game
 
@@ -39,6 +39,8 @@ Keep fixes at their actual boundary. Nebulus' doorway alignment belonged to VIC-
 
 Performance changes need controlled measurements and unchanged-output comparisons. Avoid adding hardware abstractions without evidence that they improve actual play.
 
+Know which [execution tier](docs/ARCHITECTURE.md#execution-tiers) a change belongs to. Reference-tier changes must keep original instruction boundaries and tick-identical replay. Play-tier changes may implement system work, such as recognized N64 microcode, at a higher level or on the GPU. They must keep the recovered game code, never encode game rules and pass comparisons against the reference tier. Emscripten is the one excluded technology.
+
 ## Review checklist
 
 - The behavior and its evidence are explained; uncertainty is labelled.
@@ -55,11 +57,10 @@ Repository: [benbruscella/romstudio](https://github.com/benbruscella/romstudio).
 All maintained JavaScript uses `.js` with `"type": "module"` in package.json. TypeScript compiles to those modules. Prettier formats source, docs and configuration; ESLint checks correctness and requires braces around control-flow bodies. Generated game translations and all of dist are excluded from formatting and linting.
 
 ```sh
-npm run format
-npm run lint:fix
+npm run fix
 npm run check
-npm run test:unit
-npm run test:integration
+npm test -- unit
+npm test -- integration
 ```
 
 `check` runs formatting verification, ESLint and TypeScript. Use clear names, short statements and comments explaining the original machine contract; a formatter cannot supply that explanation.

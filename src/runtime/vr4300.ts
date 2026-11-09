@@ -251,6 +251,38 @@ export class Vr4300Machine {
     this.registers[0] = 0n;
     return true;
   }
+  /** Play tier: instructions a faulting compiled block retired, including
+   * the faulting one. Set only when a block rethrows. */
+  blockTicks = 0;
+  /** Play tier: a compiled block may start only at an ordinary boundary, in
+   * kernel mode, where KSEG0/KSEG1 data accesses need no translation. */
+  canEnterBlock(): boolean {
+    if (this.delaySlot || this.nextPc !== (this.pc + 4) >>> 0) {
+      return false;
+    }
+    const status = this.control.read(12);
+    return (status & 6) !== 0 || (status & 0x18) === 0;
+  }
+  /** Play tier: the next block operation is a delay slot, so a fault records
+   * the branch address and BD flag exactly as the reference path does. */
+  blockSlot(pc: number): void {
+    this.pc = pc;
+    this.delaySlot = true;
+  }
+  /** Play tier: commit a compiled block's control transfer and counts. */
+  endBlock(next: number, count: number): void {
+    this.pc = next >>> 0;
+    this.nextPc = (next + 4) >>> 0;
+    this.delaySlot = false;
+    this.instructions += count;
+    this.cycles += count;
+  }
+  /** True when checkInterrupts would enter the handler now. No effects. */
+  interruptPending(external: boolean): boolean {
+    const status = this.control.read(12),
+      cause = (this.control.read(13) & ~0x400) | (external ? 0x400 : 0);
+    return (status & 7) === 1 && (status & cause & 0xff00) !== 0;
+  }
   branch(taken: boolean, target: number, likely = false): void {
     if (this.delaySlot) {
       this.gap(

@@ -3,7 +3,7 @@
 The browser starts at the original title screen after the release screens and disk load. **Play game** enables the opening music and waits for **Space** or Fire. Native instructions then initialize the first tower. All movement, drawing, shooting, collisions, lives and timer changes execute recovered instruction functions. The adapter names state and input boundaries rather than replacing the game logic.
 
 ```sh
-npm run build:game -- nebulus
+npm run cli -- build-game nebulus
 npm run cli -- play --title nebulus
 ```
 

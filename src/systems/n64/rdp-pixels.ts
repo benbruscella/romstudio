@@ -294,7 +294,11 @@ export class N64PixelPipeline {
       bytes === 2 ? (((oldWord & 1) << 2) | this.hidden[address >>> 1]!) + 1 : 8;
     const correlated = (low & 16) !== 0 && Math.abs(z - oldZ) <= dz && oldZ !== 0x3ffff;
     const force = (low & 0x4000) !== 0;
-    if (!copy && (force || ((low & 8) !== 0 && coverage < 8))) {
+    // Same anti-aliased blend enable as the span writer: no coverage
+    // overflow, and the new pixel not clearly in front of memory.
+    const farther = (low & 16) === 0 || z + dz >= oldZ,
+      overflow = ((coverage + memoryCoverage - 1) & 8) !== 0;
+    if (!copy && (force || ((low & 8) !== 0 && !overflow && farther))) {
       const cycle = ((high >>> 20) & 3) === 1 ? 1 : 0;
       const p = (low >>> (cycle ? 28 : 30)) & 3,
         a = (low >>> (cycle ? 24 : 26)) & 3,

@@ -1,10 +1,13 @@
 import type { Vr4300Machine } from '../../runtime/vr4300.js';
 import { Vr4300Gap } from '../../runtime/vr4300.js';
 import { RspGap, type RspMachine, type RspProgram } from '../../runtime/rsp.js';
-import { N64System } from './system.js';
+import { N64System, type Vr4300Block } from './system.js';
+import { lowRegisterWord } from '../../runtime/register-words.js';
 import { clearN64Trace, type N64Launch } from './checkpoint.js';
 import { N64Controls } from './input.js';
 import { renderN64ColorImage } from './render.js';
+import { DisplaySink, Fast3dTasks } from './fast3d.js';
+import { RdpStreamSink, type RdpFrame } from './rdp-stream.js';
 
 export interface N64PlayerGap {
   kind: string;
@@ -22,6 +25,9 @@ export class N64Player {
   private samples: number[] = [];
   private samplePhase = 0;
   private outputRate = 44100;
+  private blocks: ReadonlyMap<number, Vr4300Block> | undefined;
+  private blockWords: Int32Array = new Int32Array(0);
+  private blockRam: DataView = new DataView(new ArrayBuffer(0));
 
   constructor(
     readonly launch: N64Launch,
@@ -50,6 +56,33 @@ export class N64Player {
         this.samplePhase--;
       }
     };
+  }
+
+  /** Play tier: complete recognized Fast3D graphics tasks with the high-level
+   * implementation. Unrecognized or unsupported tasks run the original
+   * microcode. Learn, ROM Desk and verification keep the reference tier. */
+  /** Play tier: run compiled CPU basic blocks while the RSP is halted. The
+   * generated blocks address registers as little-endian low/high words. */
+  enableBlocks(blocks: ReadonlyMap<number, Vr4300Block>): boolean {
+    if (lowRegisterWord !== 0) {
+      return false;
+    }
+    const registers = this.system.cpu.registers,
+      ram = this.system.memory.ram.bytes;
+    this.blocks = blocks;
+    this.blockWords = new Int32Array(registers.buffer, registers.byteOffset, registers.length * 2);
+    this.blockRam = new DataView(ram.buffer, ram.byteOffset, ram.byteLength);
+    return true;
+  }
+
+  enablePlayTier(stream?: (frame: RdpFrame) => void): Fast3dTasks {
+    const memory = this.system.memory,
+      sink = stream
+        ? new RdpStreamSink(memory.ram.bytes, memory.display, stream)
+        : new DisplaySink(memory.display);
+    const graphics = new Fast3dTasks(memory.ram.bytes, sink);
+    this.system.enableTaskHandler((dmem) => graphics.run(dmem));
+    return graphics;
   }
 
   enableAudio(rate: number): void {
@@ -90,7 +123,9 @@ export class N64Player {
           }
         }
         if ((this.idleAddresses && !this.idleAddresses.has(s.cpu.pc)) || !s.advanceIdle()) {
-          s.step(this.cpu);
+          if (!this.blocks || !s.runBlock(this.blocks, this.blockWords, this.blockRam)) {
+            s.step(this.cpu);
+          }
         }
         if (s.memory.display.fullSyncs !== sync) {
           break;

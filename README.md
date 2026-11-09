@@ -4,13 +4,14 @@
 
 Understand old games. Build for the web.
 
-ROM Studio's mission is to make original games playable on the web and make their engineering understandable. Its path is **ROM → TypeScript → Web**: recover the original instructions, explain their behavior, and build a static browser game. TypeScript compiles to JavaScript for delivery; the game runs without an Emscripten or WebAssembly backend.
+ROM Studio's mission is to make original games playable on the web and make their engineering understandable. Its path is **ROM → TypeScript → Web**: recover the original instructions, explain their behavior, and build a static browser game. TypeScript compiles to JavaScript for delivery; games run without Emscripten.
 
 ## Project goals
 
 - **Recover understandable game code.** Connect original bytes and assembly to generated TypeScript, meaningful routine names, data structures and explanations people can learn from.
 - **Connect Play, Learn and Desk.** Let people play, step through execution, inspect registers/memory and trace behavior to original code, graphics and sound.
 - **Support multiple systems.** Share translation and tooling across computers, consoles and, eventually, arcade boards, while keeping each machine's hardware separate from game logic and web presentation.
+- **Play at full speed, explain exactly.** Play may use a faster [play tier](docs/ARCHITECTURE.md#execution-tiers) for system work beneath the game. Learn and ROM Desk use the exact reference tier and may run slower. Recorded routes check the two tiers against each other.
 - **Make results reproducible.** Pin media hashes, preserve source mappings and validate behavior with recorded inputs, state, picture and sound comparisons. Label partial coverage and unverified accuracy explicitly.
 
 [INSPIRATION.md](docs/INSPIRATION.md) credits Contra, RetroRecomp, arcade-decomp, TMNT, MAMEKIT and related work, explains what we want to learn from them, and sets our educational standard. **MAMEKIT explains the machine; ROM Studio explains the game.** These goals describe the intended product; the current game studies remain incomplete.
@@ -29,12 +30,15 @@ npm run dev
 
 Open the URL printed by `dev`, choose a system, then a game. `identify` inspects files and folders without executing their code. Place your original media under `roms/`; see [media inputs](docs/ROMS.md). To choose another preview port: `npm run dev -- --port 4175`.
 
-```sh
-npm run build
-npm run preview
-```
+| Command                        | What it does                                                                                                               |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                  | Builds every game package with the current code, serves the library on port 4170 and rebuilds when source changes          |
+| `npm run build`                | Builds the same packages and assembles the static site in **`dist/site/`**                                                 |
+| `npm test`                     | Unit tests, plus original/static verification for games whose media are installed (`npm test -- unit` or `-- integration`) |
+| `npm run check`, `npm run fix` | Format, lint and type checks; automatic fixes                                                                              |
+| `npm run cli -- <command>`     | The `roms` tool: identification, one-game builds and verification, preview and recovery stages                             |
 
-`build` verifies registered studies and produces the deployable website in **`dist/site/`**, including source evidence and media under SHA-256 filenames. v0.1 requires all six games and the workbench; a normal release build rejects unfinished game entries, and workbench acceptance is also required. Learn-only exports are development evidence, not a substitute for that release. `npm run dev` includes interactive studies for local testing in `dist/work/site/`. Use `build -- --studies` only when deliberately including experimental play. `preview` serves that existing build. For romstud.io, use `npm run build -- --domain romstud.io`. A project-path Pages build uses `--base /romstudio/`. See [build and deployment](docs/BUILD.md).
+Building packages each game from its saved recovery capture; testing reruns recovery and checks the result. Deployment builds with `--deploy`, which also requires every required game to be release-ready and verified for the current sources; CI does this after the integration tests. v0.1 requires all six games and the workbench. For romstud.io, CI uses `npm run build -- --deploy --domain romstud.io`; a project-path Pages build uses `--base /romstudio/`. See [build and deployment](docs/BUILD.md).
 
 The installed CLI is **`roms`**. From this checkout use `npm run cli -- <command>`; [CLI.md](docs/CLI.md) explains installation, identification and advanced analysis.
 
@@ -53,7 +57,7 @@ The five C64/NES titles are **experimental partial game studies**, with original
 
 Choose **Learn** for explanations and source, or **Try study** to exercise an unfinished recovery. **Play Game** is reserved for release-ready entries. The assembly → TypeScript explorer links observed instruction bytes to generated source-address functions. These observations are separate from checked, named interpretations such as the digger and Tetris input filter.
 
-C64 audio follows original SID register writes with approximate synthesis. NES audio now follows original 2A07 register writes, with channel/bus fixtures, per-frame original/static PCM checks and live browser playback verified for SMB and Tetris. Analogue output remains approximate. N64 has bounded CPU/RSP/audio/graphics studies and a captured title-to-opening static replay; its worker player remains unfinished, with visible rendering artifacts and unverified browser performance. These milestones do not establish complete gameplay. [Current status](docs/PROJECT-STATUS.md) separates recorded evidence, work in progress and the six-game release gate.
+C64 audio follows original SID register writes with approximate synthesis. NES audio now follows original 2A07 register writes, with channel/bus fixtures, per-frame original/static PCM checks and live browser playback verified for SMB and Tetris. Analogue output remains approximate. N64 has bounded CPU/RSP/audio/graphics studies and a captured title-to-opening static replay; its worker player remains unfinished, with visible rendering artifacts and unverified browser performance. Full-speed SM64 is planned through a separate play tier, verified against the exact reference tier. These milestones do not establish complete gameplay. [Current status](docs/PROJECT-STATUS.md) separates recorded evidence, work in progress and the six-game release gate.
 
 ## Find your way around
 
@@ -69,7 +73,7 @@ C64 audio follows original SID register writes with approximate synthesis. NES a
 | `dist/work/`                         | Recovery evidence, generated game packages and local checks                       |
 | `dist/site/`                         | Complete static website for deployment                                            |
 
-Tests live beside the source they test. `npm run test:unit` runs synthetic checks; `npm test` also runs integration tests that use locally supplied media. See [CONTRIBUTING.md](CONTRIBUTING.md) to add a game or system.
+Tests live beside the source they test. `npm test -- unit` runs synthetic checks; `npm test` also runs integration tests, including game verification, that use locally supplied media. See [CONTRIBUTING.md](CONTRIBUTING.md) to add a game or system.
 
 Project domain: **romstud.io**. Future explorations: [Blue sky](docs/BLUESKY.md).
 

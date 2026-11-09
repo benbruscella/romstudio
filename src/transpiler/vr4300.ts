@@ -334,6 +334,12 @@ export function decodeVr4300(word: number, address: number): Vr4300Instruction {
   };
 }
 
+/** Reference lowering of one instruction's effect, between begin and finish.
+ * The play-tier block compiler reuses it for operations it does not inline. */
+export function lowerVr4300(instruction: Vr4300Instruction): string {
+  return lower(instruction);
+}
+
 function lower(instruction: Vr4300Instruction): string {
   const { rs, rt, rd, shift, immediate, signedImmediate, target, address, mnemonic } = instruction;
   const source = `s.r(${rs})`,

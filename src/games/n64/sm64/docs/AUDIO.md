@@ -2,7 +2,7 @@
 
 The VR4300 CPU submits an audio command list to another processor: the **RSP**. The RSP has its own 32-bit scalar registers, eight-lane vector registers, 48-bit accumulators, and separate 4 KiB instruction and data memories. Its instruction words are different from the CPU's, even though some scalar operations look familiar.
 
-ROM Studio translates both processors separately. [`transpiler/rsp.ts`](../../../../transpiler/rsp.ts) decodes original RSP words during recovery and emits static functions. [`runtime/rsp.ts`](../../../../runtime/rsp.ts) and [`rsp-vector.ts`](../../../../runtime/rsp-vector.ts) provide architectural operations. [`systems/n64/signal.ts`](../../../../systems/n64/signal.ts) supplies SP registers and DMA. No audio command is replaced with a host implementation of that command.
+ROM Studio translates both processors separately. [`transpiler/rsp.ts`](../../../../transpiler/rsp.ts) decodes original RSP words during recovery and emits static functions. [`runtime/rsp.ts`](../../../../runtime/rsp.ts) and [`rsp-vector.ts`](../../../../runtime/rsp-vector.ts) provide architectural operations. [`systems/n64/signal.ts`](../../../../systems/n64/signal.ts) supplies SP registers and DMA. In this **reference tier**, no audio command is replaced with a host implementation of that command. The planned **play tier** may run a ROM Studio TypeScript implementation of the recognized audio microcode instead; it must reproduce this tier's PCM stream on recorded routes. See [execution tiers](../../../../../docs/ARCHITECTURE.md#execution-tiers).
 
 ## The bounded audio study
 

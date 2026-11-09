@@ -2,6 +2,10 @@ import { Vr4300Machine, Vr4300Exception } from '../../runtime/vr4300.js';
 import { N64Memory } from './memory.js';
 import { RspMachine, type RspProgram } from '../../runtime/rsp.js';
 
+/** Play-tier compiled CPU block: (machine, register words, RDRAM) → retired
+ * instructions, or 0 when it did not run. See transpiler/vr4300-blocks.ts. */
+export type Vr4300Block = (cpu: Vr4300Machine, words: Int32Array, ram: DataView) => number;
+
 /** Functional N64 bring-up machine. One executed instruction advances one
  * clock tick. This deliberately does not claim cache/pipeline or DMA timing. */
 export class N64System {
@@ -12,6 +16,7 @@ export class N64System {
   private signalStep: ((machine: RspMachine) => void) | undefined;
   private signalLinear: RspProgram['prepareLinear'];
   private signalLocal: RspProgram['runLocal'];
+  private taskHandler: ((dmem: DataView) => boolean) | undefined;
   private signalPhase = 0;
   private pendingSignalInstruction = false;
   private deviceTicks = 0;
@@ -26,6 +31,9 @@ export class N64System {
     rspRuns: 0,
     rspRunInstructions: 0,
     deviceBatches: 0,
+    highLevelTasks: 0,
+    blocks: 0,
+    blockInstructions: 0,
   };
 
   constructor(
@@ -88,7 +96,24 @@ export class N64System {
     this.signalStep = step;
     this.signalLinear = linear;
     this.signalLocal = local;
-    this.memory.signal.onStart = () => this.rsp.enter(this.memory.signal.pc);
+    this.memory.signal.onStart = () => {
+      const signal = this.memory.signal;
+      if (this.taskHandler?.(signal.view)) {
+        // The microcode would finish by setting SIG2 (task done) and executing
+        // BREAK, which halts the RSP and raises the SP interrupt if enabled.
+        signal.status |= 0x200;
+        signal.break();
+        this.executionStats.highLevelTasks++;
+        return;
+      }
+      this.rsp.enter(signal.pc);
+    };
+  }
+
+  /** Play tier only: a high-level implementation may complete a whole RSP
+   * task when it starts. Returning false runs the original microcode. */
+  enableTaskHandler(handler: ((dmem: DataView) => boolean) | undefined): void {
+    this.taskHandler = handler;
   }
 
   step(operation: (cpu: Vr4300Machine) => void): void {
@@ -108,6 +133,63 @@ export class N64System {
       this.synchronousExceptions++;
     }
     this.advanceClock();
+  }
+
+  /** Play tier: run one compiled CPU block, then account its time. Devices
+   * see the elapsed time at the block's end or at their next MMIO access, and
+   * a running RSP catches up afterwards at its 2:3 clock ratio. The processors
+   * interact only through DMA, SP registers, the semaphore and interrupts,
+   * which libultra synchronizes; Play accepts this coarser interleaving, while
+   * the reference tier keeps exact per-tick lockstep. Interrupts are taken at
+   * block boundaries. Returns false when the ordinary step must run instead. */
+  runBlock(blocks: ReadonlyMap<number, Vr4300Block>, words: Int32Array, ram: DataView): boolean {
+    const cpu = this.cpu,
+      asserted = this.memory.interrupts.asserted;
+    if (this.pendingSignalInstruction || !cpu.canEnterBlock()) {
+      return false;
+    }
+    let entered = 0;
+    if (cpu.checkInterrupts(asserted)) {
+      // The handler's first block retires in the same tick as the entry.
+      this.interruptEntries++;
+      entered = 1;
+    }
+    const block = blocks.get(cpu.pc);
+    let ticks = 0;
+    if (block) {
+      try {
+        ticks = block(cpu, words, ram);
+      } catch (error) {
+        if (!(error instanceof Vr4300Exception)) {
+          throw error;
+        }
+        this.synchronousExceptions++;
+        ticks = cpu.blockTicks;
+      }
+    }
+    if (!ticks) {
+      if (!entered) {
+        return false;
+      }
+      // The exception vector has no block: count the entry tick only.
+      ticks = 1;
+    } else {
+      this.executionStats.blocks++;
+      this.executionStats.blockInstructions += ticks;
+    }
+    this.ticks += ticks;
+    this.advanceDevices(ticks);
+    let phase = this.signalPhase + 2 * ticks;
+    while (phase >= 3) {
+      phase -= 3;
+      if ((this.memory.signal.status & 1) === 0 && this.signalStep) {
+        this.pendingSignalInstruction = true;
+        this.signalPhase = phase;
+        this.completeSignalInstruction();
+      }
+    }
+    this.signalPhase = phase;
+    return true;
   }
 
   /** Coalesce the guarded CPU wait loop only until the next observable

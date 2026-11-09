@@ -26,7 +26,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      - run: npm run test:unit
+      - run: npm test -- unit
 
   build:
     name: Verify original games and build site
@@ -50,9 +50,9 @@ jobs:
       - name: Verify and restore media by recipe identity
         run: npm run cli -- media import dist/ci-inputs/rom-studio-media.json.gz
       - name: Test real-media recovery and delivery
-        run: npm run test:integration
+        run: npm test -- integration
       - name: Build verified static site for romstud.io
-        run: npm run build -- --domain romstud.io
+        run: npm run build -- --deploy --domain romstud.io
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist/site

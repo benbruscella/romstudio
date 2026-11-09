@@ -1,6 +1,11 @@
 import { BrowserAudio } from '../../../web/audio.js';
 import { browserKey } from '../../../web/keyboard.js';
-import type { N64WorkerRequest, N64WorkerReply, N64WebTitle } from './protocol.js';
+import type {
+  N64ExecutionTier,
+  N64WorkerRequest,
+  N64WorkerReply,
+  N64WebTitle,
+} from './protocol.js';
 
 const get = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -340,9 +345,13 @@ async function start(): Promise<void> {
       canvas.dataset.fullSyncs = String(message.fullSyncs);
       canvas.dataset.ticks = String(message.ticks);
       canvas.dataset.rspSpanInstructions = String(message.rspSpanInstructions);
+      canvas.dataset.highLevelTasks = String(message.highLevelTasks);
     }
   };
-  post({ type: 'load', base: base.href });
+  const tier: N64ExecutionTier =
+    new URLSearchParams(location.search).get('tier') === 'reference' ? 'reference' : 'play';
+  canvas.dataset.tier = tier;
+  post({ type: 'load', base: base.href, tier });
 }
 requestAnimationFrame(animate);
 void start().catch((error) => failure((error as Error).message));

@@ -10,3 +10,4 @@ firmware/
 *.BIN
 *.vsf
 .DS_Store
+.playwright-mcp/

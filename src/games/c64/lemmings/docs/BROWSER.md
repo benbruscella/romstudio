@@ -3,11 +3,11 @@
 ROM Studio can now export and play “Just dig!” locally. The browser starts at the recovered first-spawn checkpoint, accepts C64 joystick and keyboard inputs, and can finish the level. This is a partial title build covering level 1; progression, other levels, exact SID sound and independent hardware parity remain outside its acceptance.
 
 ```sh
-npm run build:game -- lemmings
+npm run cli -- build-game lemmings
 npm run cli -- play --title lemmings
 ```
 
-`build:game -- lemmings` executes the disk boot afresh, records a completion route, emits static code, checks the static replay and packages `dist/work/games/c64/lemmings/`. `play` serves that export on the printed loopback URL, building it first if missing. After changing source, run `npm run build:game -- lemmings` again and refresh the page. The preview adopts a rebuilt package only after checking every declared file; invalid replacements return an error. Servers started before this refresh support need one restart. Ctrl-C stops the server. The package is a static directory and can run from a static HTTP host without a server-side emulator. The deployment step collects verified files into `dist/site/`; building does not publish them.
+`build-game lemmings` executes the disk boot afresh, records a completion route, emits static code, checks the static replay and packages `dist/work/games/c64/lemmings/`. `play` serves that export on the printed loopback URL, building it first if missing. After changing source, run `npm run cli -- build-game lemmings` again and refresh the page. The preview adopts a rebuilt package only after checking every declared file; invalid replacements return an error. Servers started before this refresh support need one restart. Ctrl-C stops the server. The package is a static directory and can run from a static HTTP host without a server-side emulator. The deployment step collects verified files into `dist/site/`; building does not publish them.
 
 ## Playing
 

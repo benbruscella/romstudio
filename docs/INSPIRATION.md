@@ -6,7 +6,7 @@ ROM Studio's mission is to make original games playable on the web and make thei
 
 Original machine instructions become inspectable TypeScript; TypeScript compiles to JavaScript for a static browser build. The browser host presents frames, sound and controls. System services model the hardware the translated game accesses.
 
-Native engines compiled through Emscripten/WebAssembly are outside this design. Ideas from native recompilation projects can still improve ROM Studio's TypeScript pipeline.
+Native engines compiled through Emscripten are outside this design. Ideas from native recompilation projects can still improve ROM Studio's TypeScript pipeline. Since 9 November 2026 a faster play tier may use WebAssembly, GPU drawing or high-level microcode implementations of our own, while the exact reference tier remains the subject of Learn and ROM Desk; see [Architecture](ARCHITECTURE.md#execution-tiers).
 
 Readable game logic is the goal beyond instruction translation. Original-address functions are useful evidence, but meaningful routines, data structures and explanations are necessary for someone to learn how a game was written. Named interpretations must retain source mappings and checks against the original behavior.
 

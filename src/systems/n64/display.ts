@@ -1,6 +1,6 @@
 import { Vr4300Gap } from '../../runtime/vr4300.js';
 import { N64Texture } from './texture.js';
-import { decodeRdpTriangle, rasterizeRdpSpans, RdpSpan } from './rdp-triangle.js';
+import { decodeRdpTriangle, rasterizeRdpSpans, RdpSpan, type RdpTriangle } from './rdp-triangle.js';
 import { N64PixelPipeline } from './rdp-pixels.js';
 
 /** RDP packets contain 64-bit words. Triangles add optional shade, texture
@@ -306,12 +306,27 @@ export class N64Display {
     }
   }
 
+  /** Play tier: executes one non-triangle RDP command supplied directly by a
+   * high-level microcode implementation, without an RDRAM command buffer. */
+  submit(high: number, low: number, secondHigh = 0, secondLow = 0): void {
+    this.execute(high, low, secondHigh, secondLow);
+  }
+
+  /** Play tier: draws a triangle whose coefficients a high-level microcode
+   * implementation computed, through the same rasterizer and pixel pipeline. */
+  submitTriangle(triangle: RdpTriangle): void {
+    this.drawDecodedTriangle(triangle);
+  }
+
   private drawTriangle(words: number[]): void {
+    this.drawDecodedTriangle(decodeRdpTriangle(words));
+  }
+
+  private drawDecodedTriangle(triangle: RdpTriangle): void {
     const cycle = (this.modeHigh >>> 20) & 3;
     if (cycle > 1) {
       this.gap('rdp-triangle-cycle', 'Triangles require a one- or two-cycle pixel pipeline.');
     }
-    const triangle = decodeRdpTriangle(words);
     if (triangle.level !== 0 || (this.modeHigh & 0x70000) !== 0) {
       this.gap('rdp-texture-lod', 'Detail/sharpen/mipmap texture sampling is not implemented.');
     }

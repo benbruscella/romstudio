@@ -6,7 +6,7 @@ The second title uses the supplied NFI US release of **Tower Toppler**, provided
 npm run cli -- boot --title nebulus
 ```
 
-The command starts from the boot PRG, leaves the release screens, loads the second file, executes the original game initialization and captures the menu input loop. It emits a private report, RAM and known-memory snapshots, a menu PNG, observed instructions and generated TypeScript/JavaScript. To continue into the playable first-tower browser slice, run `npm run build:game -- nebulus`, then `npm run cli -- play --title nebulus`. [The gameplay chapter](GAMEPLAY.md) follows that continuation and its bounded input coverage.
+The command starts from the boot PRG, leaves the release screens, loads the second file, executes the original game initialization and captures the menu input loop. It emits a private report, RAM and known-memory snapshots, a menu PNG, observed instructions and generated TypeScript/JavaScript. To continue into the playable first-tower browser slice, run `npm run cli -- build-game nebulus`, then `npm run cli -- play --title nebulus`. [The gameplay chapter](GAMEPLAY.md) follows that continuation and its bounded input coverage.
 
 ## Media and launch
 

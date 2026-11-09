@@ -11,7 +11,7 @@ import { bootNebulus } from './games/c64/nebulus/recovery/boot.js';
 import { buildWeb, defaultWebDirectory } from './games/c64/lemmings/recovery/build.js';
 import { buildNebulusWeb, defaultNebulusWebDirectory } from './games/c64/nebulus/recovery/build.js';
 import { bootSm64 } from './games/n64/sm64/recovery/boot.js';
-import { buildSm64Web } from './games/n64/sm64/recovery/build.js';
+import { buildSm64Web, packageSm64Web } from './games/n64/sm64/recovery/build.js';
 
 /** Node-side composition root. Per-title launch/recovery belongs in its recipe
  * and adapter; the CLI uses the same build/serve flow for either title. */
@@ -54,7 +54,10 @@ export const titles = {
     name: 'Super Mario 64 — Europe',
     boot: bootSm64,
     bootStage: 'first-rsp-task-reached',
+    /** Full original recovery, original/static verification and packaging. */
     web: buildSm64Web,
+    /** Packaging from the saved recovery capture with the current code. */
+    package: packageSm64Web,
     webDirectory: gameBuildDirectory('n64/sm64'),
     defaultPort: 4179,
     mediaDirectory: join(repositoryRoot, 'roms/n64/sm64'),

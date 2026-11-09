@@ -1,6 +1,6 @@
 # Making SM64 fast enough to play
 
-Full-speed browser execution is the goal. Reaching Mario outside the castle establishes useful execution coverage; a game running at a few frames per second still needs substantial work. The owner's latest report was roughly 4 FPS. Earlier measurements on the isolated browser were slower. Those observations come from different machines/builds and are not a controlled comparison.
+Full-speed browser execution is the goal. Reaching Mario outside the castle establishes useful execution coverage; a game running at a few frames per second still needs substantial work. Since 9 November, full speed is planned through a separate play tier; see [Two execution tiers](#two-execution-tiers-9-november). The owner's latest report was roughly 4 FPS. Earlier measurements on the isolated browser were slower. Those observations come from different machines/builds and are not a controlled comparison.
 
 ## Where the time goes
 
@@ -114,10 +114,63 @@ Native input also confirmed movement, jumping, a grounded punch, Start and brows
 
 Formatting/lint/types pass. All 277 unit tests are accounted for, including two HTTP tests run separately with loopback access, and all three pinned-cartridge SM64 integration tests pass. The local default now uses this checked package, preserving earlier exports and analysis. No source or ROM was pushed or deployed. A further prepared-state cache matched the scalar tests and full castle state/memory/PCM but showed effectively unchanged wall and renderer CPU cost. It was not adopted. `sm64-core-lab/7d26d49bf3b3641e/` retains that comparison; `sm64-core-lab/output-audit.json` independently checks the saved state and memory/audio hashes across all completed core comparisons.
 
-## What a larger improvement requires
+## Two execution tiers (9 November)
 
-Refocus on profiles of translated CPU/RSP execution and the software renderer during actual gameplay. Reduce overhead in the hottest original loops through guarded basic blocks or checked routine-level lowering where justified. Keep instruction boundaries, device events and the numerical reference available. Further changes need controlled measurements and unchanged-output checks rather than a promised speed multiplier.
+Reference-path optimization has produced useful but bounded steps. Scanline rendering gained about 28% on the title workload. Device deadlines and control waits gained about 6% in the castle core, and broader RSP/CPU block prototypes about 1%. The wide castle view runs near 1.7 FPS and the hillside view near 4–5 FPS, against PAL's 25. Full speed needs roughly seven times the current throughput.
+
+A read-only budget measurement ran 30 million functional ticks from the `b163e6c9…` launch checkpoint. It used Node's restricted optimization tier, so its absolute speed is not meaningful; the proportions are:
+
+- The CPU spent 79% of ticks in its checked idle loop and retired about 6.2 million ordinary instructions, roughly 21% of ticks.
+- The RSP executed 0.32 instructions per tick and was halted in about 40% of sampled ticks. Its work is real computation, not a spin-wait that could be skipped.
+
+At 93.75 MHz, full speed therefore needs about 20 million CPU instructions and 30 million RSP instructions per second, mostly eight-lane vector operations, plus software RDP drawing. This is one scene; gameplay proportions differ.
+
+The owner then adopted [execution tiers](../../../../../docs/ARCHITECTURE.md#execution-tiers). The earlier sections of this chapter describe the **reference tier**, which remains the verification baseline and the execution behind Learn and ROM Desk. The **play tier** plan is:
+
+1. Measure RSP instructions per task type, audio versus graphics, on the castle fixture.
+2. Recognize the cartridge's audio and Fast3D microcode by their exact bytes and implement their commands in TypeScript. The audio implementation should reproduce the reference PCM stream exactly. The graphics implementation first sends RDP commands to the existing software renderer, so frames compare directly with the reference tier.
+3. If drawing then dominates, run the RDP in a parallel worker or on the GPU, with a declared picture tolerance against reference frames.
+4. Compile hot CPU routines into larger guarded blocks if CPU execution becomes the limit.
+
+Play-tier acceptance replays the opening and castle routes on both tiers. Game state at frame boundaries and PCM must match; pictures must match or stay within the declared tolerance. Play and Desk exchange state between RSP tasks. Unrecognized microcode runs its original instructions in both tiers.
+
+## Play tier: first implementation (9 November)
+
+**Task split.** Over 40 million ticks of the castle fixture, graphics tasks used 90% of RSP instructions: about one million per frame across 10 tasks. Audio used 10% across 22 tasks. Graphics therefore came first.
+
+**High-level Fast3D.** [`fast3d.ts`](../../../../systems/n64/fast3d.ts) implements the cartridge's Fast3D 2.0D graphics microcode ("RSP SW Version: 2.0D, 04-01-96"). It recognizes the microcode by FNV-1a hashes of its text (`e8812872`) and data (`c5a5d5a5`) images. It interprets the display list: matrices, vertices, lighting, texture generation, fog, near-plane clipping, culling and RDP triangle setup. It feeds the same software RDP. Resumed (yielded) tasks, other microcode and any unimplemented command run the original instructions, and a fallback discards buffered output before anything is drawn. Synthetic tests are in [`fast3d.test.ts`](../../../../systems/n64/fast3d.test.ts).
+
+Compared with the reference tier over six castle frames, every graphics task stayed on the fast path. FullSync cadence was unchanged at about 3.75 million ticks per frame. 1.7% of pixels differ by more than 24 levels (mean difference 2.1), almost all on triangle edges. Truncating screen coordinates toward negative infinity matched best; rounding gave 4.4%. A sampled long seam across the ground is a crack in the reference renderer's output; the play tier draws that ground continuously.
+
+**Parallel RDP.** In the browser, the machine worker streams each task's RDP commands, triangles and texture-load byte snapshots to [`rdp-worker.ts`](../../../../systems/n64/web/rdp-worker.ts). That worker owns a private RDRAM mirror and returns finished frames, with at most two tasks in flight. The guest sees FullSync and the DP interrupt immediately; it never reads RDP output. Over six frames, streamed frames were byte-identical to synchronous play-tier frames and machine ticks were identical. The stream averaged about 611 KB per frame.
+
+**Browser measurement.** Single 15-second Chrome runs from the castle fixture, after warm-up, on the owner's Mac, with the same modules throughout (`?tier=reference` selects the reference tier):
+
+| Configuration              | FPS  | Guest ticks per second |
+| -------------------------- | ---- | ---------------------- |
+| Reference tier             | 7.3  | 27.2 million           |
+| Play tier, synchronous RDP | 11.1 | 41.5 million           |
+| Play tier, parallel RDP    | 13.2 | 49.4 million           |
+
+These are uncontrolled single runs on a different machine from earlier headless measurements, so they are not comparable with earlier tables. The machine worker is now fully busy. Its profile is 47% generated game-code pages, about 17% VR4300 runtime, about 25% per-tick scheduling and about 6% audio microcode. Each CPU instruction still pays for page dispatch, a word guard, `begin`/`finish`, string-dispatched FPU operations and per-tick device work.
+
+**Compiled CPU blocks.** [`vr4300-blocks.ts`](../../../../transpiler/vr4300-blocks.ts) compiles the same recovered instructions into 52,126 basic-block functions at build time (`game-code/play-blocks.js`, about 64 MB of source). A block runs from a branch target or fall-through address through the next branch and its delay slot. It checks every original word on entry and does nothing when any word differs. Common integer operations use exact 64-bit arithmetic on 32-bit register halves instead of BigInt. KSEG0/KSEG1 RDRAM loads and stores are direct; other accesses, faults and rare operations use the reference lowering. Time is accounted per block. A running RSP catches up after each block at its 2:3 ratio, and interrupts are taken at block boundaries. The reference tier keeps exact per-tick lockstep. [Tests](../../../../transpiler/vr4300-blocks.test.ts) compare block and per-instruction results, including 64-bit carries, delay slots, branch-likely nullification and changed words.
+
+Over six castle frames, 99.95% of CPU instructions ran in blocks. Frames were pixel-identical to the play tier without blocks, FullSync cadence matched, and interrupt and exception counts were identical.
+
+**Real-time pacing.** The worker now caps guest time at the 93.75 MHz functional clock, at most 20 ms ahead of wall time; after a stall it restarts rather than sprinting. Until now the player could never outrun the console.
+
+| Castle fixture, Chrome, owner's Mac | FPS   | Guest ticks per second |
+| ----------------------------------- | ----- | ---------------------- |
+| Play tier with blocks, unpaced      | 25.7  | 96.5 million           |
+| Play tier with blocks, paced        | 25.05 | 93.7 million           |
+
+The paced run's worst second was 24.97 FPS: **full PAL speed on this scene**, with the machine worker idle 48% of the time. The title screen with the animated Mario head ran at 17.9 FPS with no idle time; its audio microcode, still on original instructions, takes about 20% of the machine worker.
+
+**Next.** High-level audio, then FPU fast paths. Not yet done: a rebuilt package, opening-route acceptance, Play-to-Desk state transfer and longer memory observation. The shared software RDP no longer draws outlines along interior triangle edges: anti-aliased blending without FORCE_BL now requires no coverage overflow and a pixel not clearly in front of memory, as on hardware. This changes reference-tier frames, so replays pinned to earlier captured endpoints no longer match; a fresh recovery captures new ones.
+
+## Reference-tier constraints
 
 Retain original instruction boundaries for ROM Desk stepping. An optimized block must be bounded by interrupts, DMA, exceptions and mutable code; paused inspection must agree with ordinary execution. Source maps must continue to explain which original words produced its TypeScript. See the shared [IR direction](../../../../../docs/ARCHITECTURE.md#compiler-direction-explicit-instruction-and-control-flow-ir).
 
-Increasing a displayed speed multiplier, dropping audio samples or changing guest clocks would not establish full-speed execution. Acceptance needs sustained original controls, correct regional pacing, usable sound and ordinary play on the actual browser build.
+In either tier, increasing a displayed speed multiplier, dropping audio samples or changing guest clocks would not establish full-speed execution. Acceptance needs sustained original controls, correct regional pacing, usable sound and ordinary play on the actual browser build.

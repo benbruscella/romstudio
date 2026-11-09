@@ -16,7 +16,7 @@ The first `--` belongs to npm: it forwards the following arguments to ROM Studio
 To install the executable from this checkout:
 
 ```sh
-npm run compile
+npx tsc -p tsconfig.json
 npm link
 roms --help
 ```
@@ -46,20 +46,19 @@ npm run dev -- --port 4175
 
 The default URL is `http://127.0.0.1:4170/`. Choose a system, then **Learn** or **Try study**. **Play Game** is reserved for release-ready entries. Game routes use the History API, such as `/c64/nebulus`. Back/Forward and direct links are part of the routing contract.
 
-`dev` compiles the tools and assembles checked experimental game packages into `dist/work/site/`. An alternate port gets its own directory, for example `--port 4175` uses `dist/work/site-4175/`; `--out` overrides that choice. It does not redo a long recovery on every launch. A fresh checkout can browse Learn without original media. To play a game with no verified package, install its pinned media and build that game first. A busy port reports its URL and the option to choose another port.
+`dev` compiles the tools, builds every game package with the current code and assembles them into `dist/work/site/`; it rebuilds when source changes. An alternate port gets its own directory, for example `--port 4175` uses `dist/work/site-4175/`; `--out` overrides that choice. Packaging reuses each game's saved recovery capture rather than redoing a long recovery. A fresh checkout can browse Learn without original media. To play a game with no verified package, install its pinned media and build that game first. A busy port reports its URL and the option to choose another port.
 
 ## 3. Build games and a deployable site
 
 ```sh
-npm run build:game -- lemmings
-npm run build:game -- nebulus
 npm run build
-npm run build -- --domain romstud.io
 npm run build -- --base /romstudio/
-npm run preview
+npm run cli -- build-game n64/sm64
+npm run cli -- verify-game n64/sm64
+npm run cli -- preview
 ```
 
-`build:game` recovers and verifies one title with a browser builder. `build` rebuilds registered targets, checks their manifests, includes hashed media and learning evidence, and writes `dist/site/`. A normal release build rejects any of the six required games that is unfinished. `npm run build -- --studies` creates a development artifact containing interactive experiments and available source studies. A failed parity check fails the build; an old export is not new verification evidence. `preview` serves the existing site using its configured base path.
+`build` packages every registered game with the current code, checks their manifests, includes hashed media and learning evidence, and writes `dist/site/` with experimental studies. `build-game` packages one game. Packaging reuses saved recovery captures; `verify-game` reruns one game's original recovery and original/static comparison and records the result, and `npm test` runs these for installed media. `--deploy`, used by CI, excludes studies and rejects any required game that is unfinished or not verified for the current sources. `preview` serves the existing site using its configured base path.
 
 ### Selecting a platform version
 
@@ -100,18 +99,14 @@ SM64 boot studies write their generated source package beneath `analysis/startup
 
 ## npm scripts
 
-| Script       | Purpose                                       |
-| ------------ | --------------------------------------------- |
-| `dev`        | Compile and serve the local library           |
-| `build`      | Verify games and produce the static site      |
-| `build:game` | Recover and verify one title                  |
-| `preview`    | Serve an existing static build                |
-| `compile`    | Compile TypeScript tools only                 |
-| `check`      | Verify format, lint and types                 |
-| `test:unit`  | Run synthetic colocated tests                 |
-| `test`       | Run unit and local-media integration tests    |
-| `inspect`    | Convenience wrapper for identify              |
-| `cli`        | Run an advanced CLI command from the checkout |
+| Script  | Purpose                                                                                           |
+| ------- | ------------------------------------------------------------------------------------------------- |
+| `dev`   | Build every game package with the current code, serve the library, rebuild on change              |
+| `build` | Build every game package and the static site; CI adds `--deploy`                                  |
+| `test`  | Unit and local-media integration tests, including game verification (`-- unit`, `-- integration`) |
+| `check` | Verify format, lint and types                                                                     |
+| `fix`   | Apply Prettier formatting and ESLint fixes                                                        |
+| `cli`   | Run any `roms` command from the checkout, such as `build-game`, `verify-game` or `preview`        |
 
 Generated files belong under `dist/`. The old `.romkit/`, `exports/` and individual npm recovery scripts have been removed. `npm run level -- --number 2` is obsolete; use the advanced CLI only when doing that analysis.
 
@@ -119,4 +114,4 @@ Generated files belong under `dist/`. The old `.romkit/`, `exports/` and individ
 
 `roms media bundle` creates `dist/work/rom-studio-media.json.gz` from exactly the current pinned game inputs. `roms media import <bundle.json.gz>` validates identities, bounded sizes and hashes before restoring the expected files under roms. It never takes extraction paths from the bundle or overwrites different existing bytes. [Build and CI setup](BUILD.md) explains the owner-approved release asset used after a merge to main.
 
-The development tools also provide `format`, `format:check`, `lint`, `lint:fix`, `typecheck` and `test:integration`. `check` combines format verification, lint and types. Maintained JavaScript modules use `.js`, with package.json declaring `"type": "module"`; TypeScript compiles to those modules. The runtime version is pinned in `.nvmrc`.
+`check` combines format verification, lint and types; `fix` applies the automatic formatting and lint fixes. Maintained JavaScript modules use `.js`, with package.json declaring `"type": "module"`; TypeScript compiles to those modules. The runtime version is pinned in `.nvmrc`.

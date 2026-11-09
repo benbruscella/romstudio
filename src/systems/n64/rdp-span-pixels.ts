@@ -237,7 +237,15 @@ export class PreparedRdpPixels {
       }
       const memoryCoverage = bytes === 2 ? (((oldWord & 1) << 2) | hidden[address >>> 1]!) + 1 : 8,
         correlated = (low & 16) !== 0 && Math.abs(z - oldZ) <= dz && oldZ !== 0x3ffff;
-      if (!this.copy && (force || ((low & 8) !== 0 && coverage < 8))) {
+      // Anti-aliased blending without FORCE_BL happens only when coverage does
+      // not overflow and the new pixel is not clearly in front of memory, so
+      // a surface's first edge write over the background stays unblended and
+      // a second triangle sharing that edge blends the two surface colors.
+      // Blending every partial pixel let the background bleed into interior
+      // seams. Hardware reference: angrylion-rdp z_compare blend enable.
+      const farther = (low & 16) === 0 || z + dz >= oldZ,
+        overflow = ((coverage + memoryCoverage - 1) & 8) !== 0;
+      if (!this.copy && (force || ((low & 8) !== 0 && !overflow && farther))) {
         blend[0] = out[0]!;
         blend[1] = out[1]!;
         blend[2] = out[2]!;

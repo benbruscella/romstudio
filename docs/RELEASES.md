@@ -14,7 +14,33 @@ This is ROM Studio's durable record of release scope and agreed decisions. [Proj
 
 ### Product and architecture
 
-ROM Studio makes original games playable on the web and makes their engineering understandable. The delivery path is **ROM → TypeScript → Web**, with static JavaScript compiled from TypeScript. There is no Emscripten/WebAssembly engine in this plan. Original translated instructions, checked named interpretations, system hardware and web presentation have separate responsibilities.
+ROM Studio makes original games playable on the web and makes their engineering understandable. The delivery path is **ROM → TypeScript → Web**, with static JavaScript compiled from TypeScript. **The one excluded technology is Emscripten:** ROM Studio does not ship a native engine compiled for the browser. Original translated instructions, checked named interpretations, system hardware and web presentation have separate responsibilities.
+
+### Execution tiers — decided 9 November 2026
+
+The owner made full-speed play the priority and narrowed the hard architectural rule to **no Emscripten**. WebAssembly, GPU drawing, high-level implementations of system microcode, compiled blocks and parallel workers are no longer excluded by policy. Each still needs a measured benefit and verification against the reference tier. Two tiers separate playing a game from explaining it exactly:
+
+| Tier           | Purpose                          | What it runs                                                                                                                                           | Speed                    |
+| -------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| Reference tier | Verification, Learn and ROM Desk | Original instructions for every processor, one functional step at a time, with the software renderer and per-tick device references                    | May run below full speed |
+| Play tier      | **Play Game**                    | The same recovered game code, plus faster implementations of the system work beneath it: for N64, recognized RSP microcode, RDP drawing and scheduling | Full speed is the target |
+
+The tiers coincide for the C64 and NES games, which already have adequate speed on the reference path. SM64 is the first game that needs a separate play tier. The play tier keeps these constraints:
+
+- **Game logic is never replaced.** Game CPU code still comes from the recovered translation; it may be compiled into larger guarded blocks. Named interpretations are explanations, not play-tier substitutes.
+- **System work may be implemented at a higher level.** A recognized N64 microcode, identified by its IMEM/DMEM bytes, may run as a ROM Studio TypeScript implementation of its documented commands. Unrecognized microcode runs its original instructions; the play tier does not guess.
+- **Pacing and output stay honest.** Do not change PAL timing, skip game work or mute/drop samples to manufacture a speed claim.
+- **Tier changes happen at declared boundaries.** For N64 that is between RSP tasks, where RDRAM, CPU and device state agree. Entering ROM Desk from Play hands state to the reference tier; Desk does not step play-tier internals.
+- **Acceptance compares the tiers.** Recorded input routes must produce the same game state at frame boundaries and the same PCM stream where the implementation permits it. GPU-drawn pictures may differ by device, so they need a declared image tolerance against reference-tier frames.
+
+#### Implications for the project goals
+
+- **Recoverable game code:** unchanged. The game's own instructions, source maps and named interpretations remain the subject of Learn.
+- **Play, Learn and Desk:** Learn and Desk explain the reference tier. Inside Play, RSP microcode and RDP internals are not steppable; pausing into Desk switches tiers at a task boundary.
+- **Multiple systems:** a high-level implementation covers one microcode family. Another N64 game with different microcode starts on the reference tier until its microcode has a verified play-tier implementation.
+- **Reproducibility:** tick-exact original/static replay remains the reference-tier acceptance. Play-tier task timing differs, so its evidence compares game state, PCM and pictures on recorded routes rather than tick-identical machine hashes.
+- **Education:** high-level microcode implementations are ROM Studio's readable account of Nintendo library behavior, not recovered original code, and must be labelled that way.
+- **Documentation:** statements that excluded WebAssembly or kept GPU code removed are superseded by this decision.
 
 MAMEKIT explains machines from MAME source; ROM Studio explains games from original binaries. [Inspiration](INSPIRATION.md) credits related work and identifies improvements to adopt. Browser delivery alone does not meet the educational goal; readable routines, data structures, source mappings and explanations are required.
 
@@ -33,21 +59,33 @@ Each game also needs useful Learn material: original bytes/assembly linked to ge
 The workbench is part of the release, not an optional future add-on. Its core must work with all six supported game studies and their three systems:
 
 - Load and identify supported original media by hash, select its matching study/build and explain unsupported releases. Arbitrary unknown binaries are not automatically runnable.
-- Run, pause and restart the actual translated game; step instructions and frames. On N64, identify CPU versus RSP execution explicitly.
+- Run, pause and restart the actual translated game on the reference tier; step instructions and frames. On N64, identify CPU versus RSP execution explicitly. Opening Desk from Play transfers state at a declared tier boundary without resetting the game.
 - Synchronize the current instruction, original bytes/assembly and generated TypeScript. Show checked named interpretations where available, with bank/address-space/epoch identity and clear annotation limits.
 - Inspect registers, flags and memory from the same paused execution point. Show useful source-aware stops and address breakpoints without inventing game behavior.
 - Show basic system diagrams connecting CPU, memory, video, sound and input to the modeled devices. Label teaching diagrams distinctly from attributed original electrical schematics.
 - Connect Play, Learn and Desk through compact, accessible browser navigation and direct history URLs. Keep controls usable on desktop, laptop and narrow screens.
 
-This is acceptance scope, not a claim that the debugger is implemented. Existing source views and checkpoints provide foundations. Debug commands must act on the real system adapter and static game functions; a browser decoder or dynamic compiler is not introduced to make unsupported code appear to work.
+This is acceptance scope, not a claim that the debugger is implemented. Existing source views and checkpoints provide foundations. Debug commands must act on the real system adapter and the reference tier's static game functions; a browser decoder or dynamic compiler is not introduced to make unsupported code appear to work. Desk may run below full speed.
 
 Advanced rewind/time travel, pixel-to-instruction archaeology, semantic breakpoints, editors, community remix galleries and multiplayer remain [Blue sky](BLUESKY.md) ideas unless separately promoted into a release.
 
 ### Verification and delivery
 
-Release acceptance includes checks/tests on the actual candidate, original/static replay, game-specific behavior assertions, source mapping checks, controls/audio/performance review and all six games in the workbench. Stepping must agree with ordinary execution at the same machine boundary, and paused inspection must not advance the game. Unsupported paths retain diagnostic provenance.
+Release acceptance includes checks/tests on the actual candidate, original/static replay, game-specific behavior assertions, source mapping checks, controls/audio/performance review and all six games in the workbench. Stepping must agree with ordinary execution at the same machine boundary, and paused inspection must not advance the game. Unsupported paths retain diagnostic provenance. Where a game has a separate play tier, release acceptance also compares it with the reference tier on recorded input routes: game state at frame boundaries, PCM and pictures within their declared tolerance.
 
-The existing strict build enforces game readiness. Workbench implementation, acceptance checks and its release gate still need to be completed; passing the present game gate alone will not satisfy the expanded release scope. See [Testing](TESTING.md).
+### Build, test and deploy — decided 9 November 2026
+
+The owner separated building from testing. **Build packages; tests verify; deploy is strict.** Previously each game's build reran original recovery and its original/static comparison, so a renderer fix took half an hour to reach `npm run dev`.
+
+| Step   | Command                                                                             | What it does                                                                                                                                                                                                                                     |
+| ------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Build  | `npm run build`, `npm run dev`                                                      | Packages every game from its saved recovery capture with the current compiled code, then assembles the site. `dev` also serves and rebuilds on changes. A package records whether its verification is current for the sources it was built from. |
+| Test   | `npm test`, `npm run cli -- verify-game <system/game>`                              | Reruns original recovery and the original/static comparisons, then records the result. Integration tests use it.                                                                                                                                 |
+| Deploy | CI: `npm run build -- --deploy --domain romstud.io` after `npm test -- integration` | Requires every required game to be release-ready and verified for the current sources. There is no separate release script.                                                                                                                      |
+
+A recovery capture is reused until the media, recipe or recovery scenario changes; it is input for packaging, never evidence that changed code passed. SM64 is the first game split this way. Until the C64 and NES builders gain captures, build reuses their last verified package and `verify-game` refreshes it; their combined recovery takes over half an hour. The scripts were reduced to `dev`, `build`, `test`, `check`, `fix` and `cli`.
+
+The strict deploy build enforces game readiness. Workbench implementation, acceptance checks and its release gate still need to be completed; passing the present game gate alone will not satisfy the expanded release scope. See [Testing](TESTING.md).
 
 Generated output stays under `dist/tools/`, `dist/work/` and deployable `dist/site/`. Routes use browser history. The domain is **romstud.io**, with `/romstudio/` project-base builds retained. CI checks merged main updates before deployment. **The owner must explicitly approve the concrete reviewed v0.1 result before any initial push, input upload or deployment.**
 
@@ -57,11 +95,13 @@ NES sound has completed bounded channel/bus, six-route PCM replay and browser ac
 
 SM64 now has checked original menus/opening and live movement/jump/B actions. The latest local optimization candidate passes its captured-original endpoint/PCM comparison and improves the matched browser title workload by about 25%; live play remains around a few frames per second. The owner explicitly asked to keep improving speed. Full-speed gameplay stays required, alongside audio, ordinary progression and ROM Desk. [Performance evidence](../src/games/n64/sm64/docs/PERFORMANCE.md) distinguishes the measured scopes and retained references; no v0.1 release or deployment has been approved.
 
-The GPU experiment was removed, including its archived code and test artifacts, after it failed to establish a meaningful speed gain. Focus remains on translated CPU/RSP execution and the software renderer. Full-speed acceptance remains required.
+The GPU experiment was removed, including its archived code and test artifacts, after it failed to establish a meaningful speed gain. Focus remains on translated CPU/RSP execution and the software renderer. Full-speed acceptance remains required. _(Superseded on 9 November by the execution tiers: GPU drawing may return in the play tier once RSP microcode cost no longer dominates. The earlier experiment drew on the GPU while CPU/RSP execution still set the pace.)_
 
-The owner reaffirmed the SM64 full-speed target and supplied detailed performance findings. Keep **software scanlines → guarded RSP blocks → event-deadline execution** as the investigation order. Binary64 already represents signed 48-bit accumulator integers exactly; integer pairs need a measured speed benefit and are not an accuracy fix. GPU code remains removed. Do not change PAL pacing, skip work or mute/drop samples to manufacture a speed claim.
+The owner reaffirmed the SM64 full-speed target and supplied detailed performance findings. Keep **software scanlines → guarded RSP blocks → event-deadline execution** as the investigation order. Binary64 already represents signed 48-bit accumulator integers exactly; integer pairs need a measured speed benefit and are not an accuracy fix. GPU code remains removed. Do not change PAL pacing, skip work or mute/drop samples to manufacture a speed claim. _(The investigation order and "GPU code remains removed" are superseded by the execution tiers; the pacing and output rule still applies.)_
 
 On 9 November the checked software scanline package passed its complete earlier-original endpoint/PCM comparison and a fresh browser title test, 3.48 → 4.44 completed tasks/second. Larger block/scheduling prototypes remain under evaluation. Node's restricted optimization tier differs substantially from Chrome; evaluate the actual rebuilt browser before making performance acceptance decisions. Full-speed sustained play, usable sound, saves/progression and the six-game/workbench release scope remain required.
+
+Later on 9 November the owner adopted the [execution tiers](#execution-tiers--decided-9-november-2026). Reference-tier optimizations have produced 25–64% steps, while broader block experiments gained about 1%; full speed needs roughly seven times the current throughput. The SM64 order is now: measure RSP time per task type; build play-tier implementations of the recognized audio and Fast3D graphics microcode, verified against reference-tier PCM and frames; move RDP drawing to a parallel worker or the GPU if measurements still fall short; then compile hot CPU blocks where measured. The reference tier stays the verification baseline for Learn and Desk.
 
 ## Retained project decisions
 
@@ -72,6 +112,8 @@ The following record is preserved from PROJECT-STATUS.md so release decisions an
 | Rename ROMKIT                 | Product **ROM Studio**, npm package `rom-studio`, CLI **`roms`**; source folder is still the existing `romkit` checkout                                                                  |
 | README logo                   | New cartridge/code wordmark in `docs/assets/rom-studio-logo.png`                                                                                                                         |
 | No VICE                       | Media parsing, CPU translation and hardware services are implemented here; no external emulator dependency or fallback                                                                   |
+| Only hard engine rule         | No Emscripten (9 November 2026). WebAssembly, GPU drawing and high-level microcode implementations are permitted when measured and verified                                              |
+| Two execution tiers           | Reference tier for verification, Learn and Desk (may be slower); play tier for full-speed Play, checked against the reference on recorded routes                                         |
 | Keep C64 Lemmings disks       | Original three-disk Alpha Flight release remains the first trial; no switch to a console version                                                                                         |
 | Skip typing LOAD              | Original startup is run during recovery; browser launch uses a declared checkpoint                                                                                                       |
 | Educational game code         | Named interpretations, assembly/source mappings, memory maps, chapters and checked evidence, inspired by Contra                                                                          |
@@ -98,7 +140,7 @@ The following record is preserved from PROJECT-STATUS.md so release decisions an
 | Play and Learn                | Separate actions and history routes; Learn must show useful game explanations and original/code evidence                                                                                 |
 | Too much above fold           | Compact play layout with one navigation row; laptop/desktop layout checked, final mobile regression pending                                                                              |
 | Proper router                 | History API routes (`/c64/nebulus`), direct load, refresh and Back/Forward; GitHub Pages project-base fallback                                                                           |
-| Clean scripts                 | `dev`, `build`, `build:game`, `preview`, `compile`, `check`, `test`, `test:unit`, `inspect`, `cli`                                                                                       |
+| Clean scripts                 | `dev`, `build`, `test`, `check`, `fix`, `cli` (9 November 2026); one-game builds, verification and preview use `npm run cli --`                                                          |
 | First CLI command             | `roms identify <file-or-folder> [--json]`, formats/hashes/evidence/pinned matches without executing input                                                                                |
 | README usability              | Basic identify/dev/build workflow; internal recovery commands explained in `docs/CLI.md`                                                                                                 |
 | Port conflict                 | Busy ports report a useful CLI error; alternate dev ports get separate output directories and watcher rebuilds are serialized                                                            |

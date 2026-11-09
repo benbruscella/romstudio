@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { Diagnostic, sha256 } from '../../../../core.js';
@@ -466,6 +466,86 @@ export async function prepareSm64Playback(options: Sm64PlaybackOptions = {}) {
     files: Object.fromEntries(Object.entries(files).map(([name, bytes]) => [name, sha256(bytes)])),
   };
   return persistPlayback(cache, record, files, media);
+}
+
+const packagedFiles = [
+  'title.json',
+  'rdram.bin',
+  'signal.bin',
+  'title.png',
+  'cpu.json',
+  'rsp.json',
+  'cpu-observed.json',
+  'rsp-observed.json',
+];
+
+/** Build input: the passing capture verified for the current sources, or
+ * otherwise the newest passing capture for this cartridge. Packaging reuses
+ * it with the current code and never re-verifies; `current` says whether its
+ * verification applies to the sources being packaged. */
+export async function loadSm64Capture(options: StartupOptions = {}) {
+  const directory = join(gameBuildDirectory('n64/sm64'), 'analysis/playback');
+  const media = await loadSm64Cartridge(options);
+  const names = await readdir(directory).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') {
+      return [] as string[];
+    }
+    throw error;
+  });
+  const candidates: { root: string; record: PlaybackRecord; current: boolean; time: number }[] = [];
+  for (const name of names.filter((name) => /^[a-f0-9]{64}$/.test(name))) {
+    const root = join(directory, name);
+    let record: PlaybackRecord;
+    try {
+      record = JSON.parse(await readFile(join(root, 'record.json'), 'utf8')) as PlaybackRecord;
+    } catch {
+      continue;
+    }
+    if (
+      record.verification.referenceReplay !== 'passed' ||
+      record.verification.checks.some((check) => !check.passed) ||
+      (record.mediaSha256 && record.mediaSha256 !== media.identity.canonicalSha256) ||
+      packagedFiles.some((file) => !record.files[file])
+    ) {
+      continue;
+    }
+    let current = false;
+    if (record.sourceSnapshot) {
+      try {
+        await assertSourceSnapshot(record.sourceSnapshot);
+        current = true;
+      } catch {
+        current = false;
+      }
+    }
+    candidates.push({ root, record, current, time: (await stat(root)).mtimeMs });
+  }
+  candidates.sort((a, b) => Number(b.current) - Number(a.current) || b.time - a.time);
+  const chosen = candidates[0];
+  if (!chosen) {
+    throw new Diagnostic(
+      'SM64_CAPTURE',
+      'No recovery capture for this cartridge yet. Run npm run cli -- verify-game n64/sm64 once.',
+    );
+  }
+  const files: Record<string, Uint8Array> = {};
+  for (const [name, hash] of Object.entries(chosen.record.files)) {
+    if (!/^[a-z][a-z0-9.-]*$/.test(name)) {
+      throw new Diagnostic('SM64_CAPTURE', 'Invalid captured file name.');
+    }
+    const bytes = await readFile(join(chosen.root, name));
+    if (sha256(bytes) !== hash) {
+      throw new Diagnostic('SM64_CAPTURE', `Changed captured file ${name}.`);
+    }
+    files[name] = bytes;
+  }
+  return {
+    directory: chosen.root,
+    record: chosen.record,
+    files,
+    media,
+    current: chosen.current,
+  };
 }
 
 async function persistPlayback(

@@ -33,6 +33,8 @@ export async function buildSite(
     domain?: string;
     includeStudies?: boolean;
     requireReady?: boolean;
+    /** Deploy: every package must have passed verification for its sources. */
+    requireVerified?: boolean;
     onProgress?: (message: string) => void;
   } = {},
 ) {
@@ -126,8 +128,11 @@ export async function buildSite(
       await put(asset, bytes);
       game.media.push({ name: medium.name, sha256: medium.sha256, bytes: bytes.length, asset });
     }
-    if (installed && options.rebuild) {
-      await installed.web(options.onProgress ? { onProgress: options.onProgress } : {});
+    if (installed && options.rebuild && 'package' in installed) {
+      // Build packages from the saved recovery capture with the current code.
+      // Games without a capture split keep their last verified package until
+      // verify-game (or the integration tests) refreshes it.
+      await installed.package(options.onProgress ? { onProgress: options.onProgress } : {});
     }
     if (installed) {
       try {
@@ -149,8 +154,11 @@ export async function buildSite(
         ) {
           throw new Diagnostic('SITE_GAME', `Game package identity does not match ${key}.`);
         }
+        // Local builds may package from an earlier capture, labelled stale;
+        // deployment requires verification passed for the current sources.
+        const replay = manifest.verification.referenceReplay;
         if (
-          manifest.verification.referenceReplay !== 'passed' ||
+          (replay !== 'passed' && (options.requireVerified || replay !== 'stale')) ||
           !manifest.files['game-code/program.ts'] ||
           !manifest.files['game-code/observed-source.json'] ||
           (manifest.build.playable && !manifest.files['index.html'])

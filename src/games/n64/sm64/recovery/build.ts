@@ -7,10 +7,11 @@ import { repositoryRoot, gameBuildDirectory } from '../../../../paths.js';
 import type { StartupOptions } from '../../../../startup.js';
 import type { N64Launch, N64Checkpoint } from '../../../../systems/n64/checkpoint.js';
 import { liftVr4300Pages, type Vr4300Instruction } from '../../../../transpiler/vr4300.js';
+import { emitVr4300Blocks } from '../../../../transpiler/vr4300-blocks.js';
 import { liftRsp, type RspInstruction } from '../../../../transpiler/rsp.js';
 import { programFiles } from '../../../../transpiler/static.js';
 import { verifyWebImports } from '../../../../build/web-imports.js';
-import { prepareSm64Playback, type Sm64PlaybackOptions } from './playback.js';
+import { loadSm64Capture, prepareSm64Playback, type Sm64PlaybackOptions } from './playback.js';
 import { assertSourceSnapshot } from '../../../../analysis/source-snapshot.js';
 
 /** N64 packaging owns no CPU decoder at runtime. The browser gets original
@@ -20,19 +21,35 @@ export async function buildSm64Web(options: Sm64PlaybackOptions = {}) {
   return packageSm64Playback(prepared, options);
 }
 
-/** Package an already checked capture separately from the expensive recovery.
- * This also lets browser and delivery tests exercise the exact same export. */
+/** Build: package the saved recovery capture with the current code, without
+ * re-verifying. The manifest marks verification stale unless the capture was
+ * verified for these exact sources; `verify-game` refreshes it. */
+export async function packageSm64Web(options: Sm64PlaybackOptions = {}) {
+  const capture = await loadSm64Capture(options);
+  options.onProgress?.(
+    capture.current
+      ? 'Packaging SM64 from the capture verified for the current sources…'
+      : `Packaging SM64 from capture ${capture.record.fingerprint.slice(0, 8)}…; verification is stale until npm run cli -- verify-game n64/sm64.`,
+  );
+  return packageSm64Playback(capture, { ...options, verified: capture.current });
+}
+
+/** Package a capture separately from the expensive recovery. This also lets
+ * browser and delivery tests exercise the exact same export. */
 export async function packageSm64Playback(
   prepared: Awaited<ReturnType<typeof prepareSm64Playback>>,
-  options: StartupOptions = {},
+  options: StartupOptions & { verified?: boolean } = {},
 ) {
-  if (!prepared.record.sourceSnapshot) {
-    throw new Diagnostic(
-      'SM64_MODEL_SNAPSHOT',
-      'Use an earlier capture as a declared fixture and reverify the current model before packaging.',
-    );
+  const verified = options.verified ?? true;
+  if (verified) {
+    if (!prepared.record.sourceSnapshot) {
+      throw new Diagnostic(
+        'SM64_MODEL_SNAPSHOT',
+        'Use an earlier capture as a declared fixture and reverify the current model before packaging.',
+      );
+    }
+    await assertSourceSnapshot(prepared.record.sourceSnapshot);
   }
-  await assertSourceSnapshot(prepared.record.sourceSnapshot);
   const directory = resolve(options.outputDirectory ?? gameBuildDirectory('n64/sm64'));
   const compiled = fileURLToPath(new URL('../../../../', import.meta.url));
   const files: Record<string, string> = {},
@@ -65,9 +82,14 @@ export async function packageSm64Playback(
   await put('checkpoint.json', JSON.stringify(launch));
   await put('reference-final.png', prepared.files['title.png']!);
   await put('package.json', JSON.stringify({ type: 'module' }));
-  const cpu = liftVr4300Pages(
-    JSON.parse(Buffer.from(prepared.files['cpu.json']!).toString()) as Vr4300Instruction[],
-  );
+  const cpuInstructions = JSON.parse(
+    Buffer.from(prepared.files['cpu.json']!).toString(),
+  ) as Vr4300Instruction[];
+  const cpu = liftVr4300Pages(cpuInstructions);
+  // Play tier: compiled basic blocks of the same recovered instructions.
+  for (const [name, source] of Object.entries(emitVr4300Blocks(cpuInstructions).files)) {
+    await put('game-code/' + name, source);
+  }
   const rsp = liftRsp(
     JSON.parse(Buffer.from(prepared.files['rsp.json']!).toString()) as RspInstruction[],
   );
@@ -165,8 +187,11 @@ export async function packageSm64Playback(
       'input',
       'checkpoint',
       'player',
+      // Play tier: high-level Fast3D tasks and the parallel RDP stream.
+      'fast3d',
+      'rdp-stream',
     ].map((name) => 'systems/n64/' + name),
-    ...['app', 'worker', 'protocol'].map((name) => 'systems/n64/web/' + name),
+    ...['app', 'worker', 'rdp-worker', 'protocol'].map((name) => 'systems/n64/web/' + name),
     'games/n64/sm64/web/title',
   ];
   for (const name of modules) {
@@ -196,7 +221,9 @@ export async function packageSm64Playback(
     );
   }
   verifyWebImports(sources);
-  await assertSourceSnapshot(prepared.record.sourceSnapshot);
+  if (verified) {
+    await assertSourceSnapshot(prepared.record.sourceSnapshot!);
+  }
   const manifest = {
     schemaVersion: 2,
     titleId: 'sm64',
@@ -209,11 +236,17 @@ export async function packageSm64Playback(
       execution: 'static-original-instruction-functions',
       scheduling: 'dedicated-browser-worker',
     },
-    verification: prepared.record.verification,
+    verification: verified
+      ? prepared.record.verification
+      : {
+          ...prepared.record.verification,
+          referenceReplay: 'stale',
+          currentSource: `Packaged with current code from capture ${prepared.record.fingerprint}; not verified for these sources.`,
+        },
     recovery: {
       sourceFingerprint: prepared.record.fingerprint,
-      modelSourceFiles: Object.keys(prepared.record.sourceSnapshot.files).length,
-      modelSourceFingerprint: sha256(JSON.stringify(prepared.record.sourceSnapshot)),
+      modelSourceFiles: Object.keys(prepared.record.sourceSnapshot?.files ?? {}).length,
+      modelSourceFingerprint: sha256(JSON.stringify(prepared.record.sourceSnapshot ?? null)),
       origin: prepared.record.origin ?? { kind: 'earlier recorded startup' },
       checkedFullSyncs: [prepared.record.title.fullSyncs, prepared.record.end.fullSyncs],
       scope:
