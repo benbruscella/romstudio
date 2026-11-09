@@ -73,8 +73,16 @@ function recoverCursorCoverage(checkpoint: C64Checkpoint, selectDigger: boolean)
  * variants dynamically; the delivered module is emitted once from their
  * reviewed address/opcode shapes and never includes the recovery compiler. */
 export async function buildWeb(
-  options: StartupOptions & { onProgress?: (message: string) => void } = {},
+  options: StartupOptions & {
+    onProgress?: (message: string) => void;
+    /** Replay the exported static code against original execution (default
+     * true). `false` packages only: the recovery that produces the package
+     * still runs, but static-vs-original replays and parity checks are skipped
+     * and the manifest records the reference replay as 'not-run'. */
+    verify?: boolean;
+  } = {},
 ) {
+  const verify = options.verify ?? true;
   const directory = resolve(options.outputDirectory ?? defaultWebDirectory);
   options.onProgress?.('Booting the original disks to the first level');
   const runtime = await runLevelToFirstSpawn({
@@ -136,83 +144,99 @@ export async function buildWeb(
   options.onProgress?.(
     `Emitting ${emitted.shapes.length} guarded instruction shapes (${emitted.javascript.length} bytes)`,
   );
-  const generated = await importStaticProgram(emitted);
-  options.onProgress?.('Checking exported cursor movement at all four limits');
-  const cursorChecks = cursorCoverage.map((coverage) => {
-    const cursorReplay = new LemmingsPlayer(
-      checkpoint,
-      generated.step,
-      replayControls(coverage.player.inputs),
-      false,
-    );
-    replayToControls(cursorReplay, CURSOR_COVERAGE_FRAMES, 10000000);
-    return {
-      name: `${coverage.id}-replay`,
-      passed:
-        coverage.reachedLimits &&
-        sha256(JSON.stringify(captureC64(cursorReplay.bus, cursorReplay.machine))) ===
-          coverage.state &&
-        JSON.stringify(cursorReplay.inputs) === JSON.stringify(coverage.player.inputs),
-    };
-  });
-  const replay = new LemmingsPlayer(checkpoint, generated.step, replayControls(reference.inputs));
-  replay.enableAudio(44100);
-  options.onProgress?.('Checking static replay against original execution');
-  for (let frame = 0; frame < 6000 && !replay.outcome && !replay.gap; frame++) {
-    replay.advanceFrame();
-  }
-  const replayHashes = {
-    memory: sha256(replay.bus.bytes),
-    known: sha256(replay.bus.known),
-    display: sha256(replay.display.pixels),
+  const staticCode = {
+    name: 'static-code',
+    passed: !/\b(?:eval|new Function)\s*\(/.test(emitted.javascript),
   };
-  const replayAudio = replay.takeAudio();
-  const checks = [
-    {
-      name: 'native-level-finished',
-      passed: trace.stop === 'checkpoint' && !!reference.outcome?.won,
-    },
-    { name: 'static-level-finished', passed: !!replay.outcome?.won && !replay.gap },
-    {
-      name: 'cpu-state',
-      passed: JSON.stringify(replay.machine.snapshot()) === JSON.stringify(referenceState),
-    },
-    {
-      name: 'memory-knownness-and-raster',
-      passed: JSON.stringify(replayHashes) === JSON.stringify(referenceHashes),
-    },
-    {
-      name: 'device-state',
-      passed:
-        JSON.stringify(captureC64(replay.bus, replay.machine)) === JSON.stringify(referenceDevices),
-    },
-    {
-      name: 'result',
-      passed: JSON.stringify(replay.outcome) === JSON.stringify(reference.outcome),
-    },
-    {
-      name: 'recorded-inputs',
-      passed: JSON.stringify(replay.inputs) === JSON.stringify(reference.inputs),
-    },
-    {
-      name: 'sid-audio-replay',
-      passed:
-        sha256(new Uint8Array(replayAudio.buffer)) ===
-          sha256(new Uint8Array(referenceAudio.buffer)) &&
-        referenceAudio.some((sample) => Math.abs(sample) > 0.001),
-    },
-    ...cursorChecks,
-    { name: 'static-code', passed: !/\b(?:eval|new Function)\s*\(/.test(emitted.javascript) },
-  ];
+  const nativeFinished = {
+    name: 'native-level-finished',
+    passed: trace.stop === 'checkpoint' && !!reference.outcome?.won,
+  };
+  // Verification only: the imported static module and its replays feed checks,
+  // never package contents.
+  async function verifyStaticReplay() {
+    const generated = await importStaticProgram(emitted);
+    options.onProgress?.('Checking exported cursor movement at all four limits');
+    const cursorChecks = cursorCoverage.map((coverage) => {
+      const cursorReplay = new LemmingsPlayer(
+        checkpoint,
+        generated.step,
+        replayControls(coverage.player.inputs),
+        false,
+      );
+      replayToControls(cursorReplay, CURSOR_COVERAGE_FRAMES, 10000000);
+      return {
+        name: `${coverage.id}-replay`,
+        passed:
+          coverage.reachedLimits &&
+          sha256(JSON.stringify(captureC64(cursorReplay.bus, cursorReplay.machine))) ===
+            coverage.state &&
+          JSON.stringify(cursorReplay.inputs) === JSON.stringify(coverage.player.inputs),
+      };
+    });
+    const replay = new LemmingsPlayer(checkpoint, generated.step, replayControls(reference.inputs));
+    replay.enableAudio(44100);
+    options.onProgress?.('Checking static replay against original execution');
+    for (let frame = 0; frame < 6000 && !replay.outcome && !replay.gap; frame++) {
+      replay.advanceFrame();
+    }
+    const replayHashes = {
+      memory: sha256(replay.bus.bytes),
+      known: sha256(replay.bus.known),
+      display: sha256(replay.display.pixels),
+    };
+    const replayAudio = replay.takeAudio();
+    const checks = [
+      nativeFinished,
+      { name: 'static-level-finished', passed: !!replay.outcome?.won && !replay.gap },
+      {
+        name: 'cpu-state',
+        passed: JSON.stringify(replay.machine.snapshot()) === JSON.stringify(referenceState),
+      },
+      {
+        name: 'memory-knownness-and-raster',
+        passed: JSON.stringify(replayHashes) === JSON.stringify(referenceHashes),
+      },
+      {
+        name: 'device-state',
+        passed:
+          JSON.stringify(captureC64(replay.bus, replay.machine)) ===
+          JSON.stringify(referenceDevices),
+      },
+      {
+        name: 'result',
+        passed: JSON.stringify(replay.outcome) === JSON.stringify(reference.outcome),
+      },
+      {
+        name: 'recorded-inputs',
+        passed: JSON.stringify(replay.inputs) === JSON.stringify(reference.inputs),
+      },
+      {
+        name: 'sid-audio-replay',
+        passed:
+          sha256(new Uint8Array(replayAudio.buffer)) ===
+            sha256(new Uint8Array(referenceAudio.buffer)) &&
+          referenceAudio.some((sample) => Math.abs(sample) > 0.001),
+      },
+      ...cursorChecks,
+      staticCode,
+    ];
+    return { cursorChecks, replay, replayHashes, checks };
+  }
+  const parity = verify ? await verifyStaticReplay() : undefined;
+  const cursorChecks = parity?.cursorChecks ?? [];
+  const replay = parity?.replay;
+  const replayHashes = parity?.replayHashes;
+  const checks = parity ? parity.checks : [nativeFinished, staticCode];
   const passed = checks.every((check) => check.passed);
   if (!passed) {
     throw new Diagnostic(
       'WEB_PARITY',
       JSON.stringify({
         checks,
-        gap: replay.gap,
+        gap: replay?.gap,
         referenceState,
-        replayState: replay.machine.snapshot(),
+        replayState: replay?.machine.snapshot(),
       }),
     );
   }
@@ -227,10 +251,10 @@ export async function buildWeb(
       levels: [1],
     },
     verification: {
-      referenceReplay: 'passed',
+      referenceReplay: verify ? 'passed' : 'not-run',
       hardwareParity: 'unverified',
       checks,
-      result: replay.outcome,
+      result: replay?.outcome,
       hashes: replayHashes,
     },
     backend: {
@@ -266,7 +290,7 @@ export async function buildWeb(
     audio: {
       kind: 'approximate-sid',
       clock: 'pal',
-      sampleReplay: 'passed',
+      sampleReplay: verify ? 'passed' : 'not-run',
       samples: referenceAudio.length,
       speed: '1x-only',
       hardwareParity: 'unverified',
@@ -276,9 +300,11 @@ export async function buildWeb(
       controlFrames: CURSOR_COVERAGE_FRAMES,
       bounds: coverage.bounds,
       reachedAllLimits: coverage.reachedLimits,
-      staticReplay: cursorChecks.find((check) => check.name === `${coverage.id}-replay`)!.passed
-        ? 'passed'
-        : 'failed',
+      staticReplay: !verify
+        ? 'not-run'
+        : cursorChecks.find((check) => check.name === `${coverage.id}-replay`)!.passed
+          ? 'passed'
+          : 'failed',
     })),
     limitations: [
       'Only the first level and recovered source/opcode shapes are exported. Uncovered paths stop explicitly; this is a partial title build.',

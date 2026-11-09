@@ -16,6 +16,7 @@ import { digTrial, type DiggerInput } from './games/c64/lemmings/recovery/dig.js
 import { serveWeb } from './build/serve.js';
 import { titles, resolveTitleId } from './titles.js';
 import { buildSite } from './build/site.js';
+import { buildGames, planGameBuilds } from './build/games.js';
 import { rebuildQueue } from './build/rebuild.js';
 import { siteDirectory, workDirectory } from './paths.js';
 import { watch } from 'node:fs';
@@ -70,7 +71,7 @@ function argumentsFor(args: string[]): { files: string[]; flags: Record<string, 
     flags: Record<string, string> = {};
   for (let n = 0; n < args.length; n++) {
     const arg = args[n]!;
-    if (arg === '--json' || arg === '--deploy') {
+    if (arg === '--json' || arg === '--deploy' || arg === '--quiet') {
       if (flags[arg.slice(2)]) {
         throw new Diagnostic('CLI_OPTION', `Duplicate ${arg}.`);
       }
@@ -162,10 +163,9 @@ async function main(): Promise<void> {
     if (!flags.title) {
       throw new Diagnostic('CLI_INPUT', 'Choose a game: ' + Object.keys(titles).join(', '));
     }
-    // verify-game always recovers and compares; build-game packages from the
-    // saved capture when the game supports it.
-    const selected = titles[resolveTitleId(flags.title, flags.system)];
-    command = command === 'build-game' && 'package' in selected ? 'package' : 'web';
+    // build-game packages (from a saved capture, or by recovering without the
+    // comparison); verify-game recovers and runs the original/static comparison.
+    command = command === 'build-game' ? 'package' : 'web';
   }
   if (command === 'build' || command === 'dev' || command === 'preview') {
     if (files.length) {
@@ -182,9 +182,11 @@ async function main(): Promise<void> {
           : siteDirectory),
     );
     if (command !== 'preview') {
+      // Game packages build in parallel processes; the site then assembles them.
+      await buildGames(await planGameBuilds(), (message) => console.error(message));
       await buildSite({
         outputDirectory,
-        rebuild: true,
+        rebuild: false,
         includeStudies: flags.deploy !== 'true',
         requireReady: flags.deploy === 'true',
         requireVerified: flags.deploy === 'true',
@@ -207,9 +209,10 @@ async function main(): Promise<void> {
     let pending: ReturnType<typeof setTimeout> | undefined;
     const rebuild = rebuildQueue(
       async () => {
+        await buildGames(await planGameBuilds(), (message) => console.error(message));
         await buildSite({
           outputDirectory,
-          rebuild: true,
+          rebuild: false,
           includeStudies: true,
           ...(flags.base ? { basePath: flags.base } : {}),
           ...(flags.domain ? { domain: flags.domain } : {}),
@@ -388,22 +391,29 @@ async function main(): Promise<void> {
       onProgress: (message: string) => console.error(message),
     };
     if (command === 'web' || command === 'package') {
+      // build-game packages without the original/static comparison;
+      // verify-game (command 'web') runs it.
+      const packaging = { ...options, verify: false };
       const result =
-        command === 'package' && 'package' in title
-          ? await title.package(options)
+        command === 'package'
+          ? 'package' in title
+            ? await title.package(options)
+            : await title.web(packaging)
           : await title.web(options);
-      console.log(
-        JSON.stringify(
-          {
-            output: result.outputDirectory,
-            build: result.manifest.build,
-            verification: result.manifest.verification,
-            backend: result.manifest.backend,
-          },
-          null,
-          2,
-        ),
-      );
+      if (flags.quiet !== 'true') {
+        console.log(
+          JSON.stringify(
+            {
+              output: result.outputDirectory,
+              build: result.manifest.build,
+              verification: result.manifest.verification,
+              backend: result.manifest.backend,
+            },
+            null,
+            2,
+          ),
+        );
+      }
     } else {
       let needsBuild: boolean;
       try {

@@ -1,5 +1,4 @@
-import { buildNesGame } from '../../../../analysis/nes.js';
-import type { StartupOptions } from '../../../../startup.js';
+import { buildNesGame, type NesBuildOptions } from '../../../../analysis/nes.js';
 export const smbStudy = {
   id: 'smb',
   title: 'Super Mario Bros.',
@@ -50,5 +49,6 @@ export const smbStudy = {
   ],
 };
 export const buildSmbWeb = (
-  options: StartupOptions & { onProgress?: (message: string) => void } = {},
+  /** `verify: false` skips the original/static comparisons; see NesBuildOptions. */
+  options: NesBuildOptions = {},
 ) => buildNesGame(smbStudy, options);

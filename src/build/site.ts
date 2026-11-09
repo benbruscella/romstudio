@@ -128,25 +128,6 @@ export async function buildSite(
       await put(asset, bytes);
       game.media.push({ name: medium.name, sha256: medium.sha256, bytes: bytes.length, asset });
     }
-    if (installed && options.rebuild) {
-      const progress = options.onProgress ? { onProgress: options.onProgress } : {};
-      if ('package' in installed) {
-        // Package from the saved recovery capture with the current code; the
-        // game creates the capture first when dist/ is clean.
-        await installed.package(progress);
-      } else if (
-        !(await lstat(join(gameBuildDirectory(key), 'manifest.json')).then(
-          () => true,
-          () => false,
-        ))
-      ) {
-        // dist/ is disposable. Without a capture split, this game's builder
-        // recovers and verifies once; later builds reuse its package until
-        // verify-game refreshes it.
-        options.onProgress?.(`Building ${key} for the first time (recovery and verification)…`);
-        await installed.web(progress);
-      }
-    }
     if (installed) {
       try {
         const source = gameBuildDirectory(key),
@@ -167,11 +148,13 @@ export async function buildSite(
         ) {
           throw new Diagnostic('SITE_GAME', `Game package identity does not match ${key}.`);
         }
-        // Local builds may package from an earlier capture, labelled stale;
-        // deployment requires verification passed for the current sources.
+        // Local builds may package from an earlier capture (stale) or skip the
+        // comparison (not-run); deployment requires verification passed for the
+        // current sources.
         const replay = manifest.verification.referenceReplay;
         if (
-          (replay !== 'passed' && (options.requireVerified || replay !== 'stale')) ||
+          (replay !== 'passed' &&
+            (options.requireVerified || (replay !== 'stale' && replay !== 'not-run'))) ||
           !manifest.files['game-code/program.ts'] ||
           !manifest.files['game-code/observed-source.json'] ||
           (manifest.build.playable && !manifest.files['index.html'])

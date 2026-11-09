@@ -1,5 +1,4 @@
-import { buildNesGame } from '../../../../analysis/nes.js';
-import type { StartupOptions } from '../../../../startup.js';
+import { buildNesGame, type NesBuildOptions } from '../../../../analysis/nes.js';
 const start = [
   { frame: 0, buttons: 0 },
   ...[180, 360, 540, 720, 900].flatMap((frame) => [
@@ -57,5 +56,6 @@ export const tetrisStudy = {
   ],
 };
 export const buildTetrisWeb = (
-  options: StartupOptions & { onProgress?: (message: string) => void } = {},
+  /** `verify: false` skips the original/static comparisons; see NesBuildOptions. */
+  options: NesBuildOptions = {},
 ) => buildNesGame(tetrisStudy, options);

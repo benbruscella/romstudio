@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sha256 } from '../../../../core.js';
@@ -11,6 +11,7 @@ import { emitVr4300Blocks } from '../../../../transpiler/vr4300-blocks.js';
 import { liftRsp, type RspInstruction } from '../../../../transpiler/rsp.js';
 import { programFiles } from '../../../../transpiler/static.js';
 import { verifyWebImports } from '../../../../build/web-imports.js';
+import { bootSm64 } from './boot.js';
 import { loadSm64Capture, prepareSm64Playback, type Sm64PlaybackOptions } from './playback.js';
 import { assertSourceSnapshot } from '../../../../analysis/source-snapshot.js';
 
@@ -25,6 +26,21 @@ export async function buildSm64Web(options: Sm64PlaybackOptions = {}) {
  * re-verifying. The manifest marks verification stale unless the capture was
  * verified for these exact sources; `verify-game` refreshes it. */
 export async function packageSm64Web(options: Sm64PlaybackOptions = {}) {
+  // The bounded CPU startup study ships as Learn source; it lives in
+  // disposable dist/, so recreate it when a clean build finds it missing.
+  const study = join(gameBuildDirectory('n64/sm64'), 'analysis/startup/source-study/manifest.json');
+  if (
+    !(await stat(study).then(
+      () => true,
+      () => false,
+    ))
+  ) {
+    options.onProgress?.('Recreating the SM64 startup study for Learn (about a minute)…');
+    // The study writes to its own analysis folder, not the package directory.
+    const startup = { ...options };
+    delete startup.outputDirectory;
+    await bootSm64(startup);
+  }
   let capture: Awaited<ReturnType<typeof loadSm64Capture>>;
   try {
     capture = await loadSm64Capture(options);

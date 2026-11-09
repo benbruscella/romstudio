@@ -12,6 +12,7 @@ import { buildWeb, defaultWebDirectory } from './games/c64/lemmings/recovery/bui
 import { buildNebulusWeb, defaultNebulusWebDirectory } from './games/c64/nebulus/recovery/build.js';
 import { bootSm64 } from './games/n64/sm64/recovery/boot.js';
 import { buildSm64Web, packageSm64Web } from './games/n64/sm64/recovery/build.js';
+import { hasSm64Capture } from './games/n64/sm64/recovery/playback.js';
 
 /** Node-side composition root. Per-title launch/recovery belongs in its recipe
  * and adapter; the CLI uses the same build/serve flow for either title. */
@@ -58,6 +59,8 @@ export const titles = {
     web: buildSm64Web,
     /** Packaging from the saved recovery capture with the current code. */
     package: packageSm64Web,
+    /** Build planning: whether packaging can reuse a saved capture. */
+    hasCapture: hasSm64Capture,
     webDirectory: gameBuildDirectory('n64/sm64'),
     defaultPort: 4179,
     mediaDirectory: join(repositoryRoot, 'roms/n64/sm64'),

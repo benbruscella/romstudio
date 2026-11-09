@@ -10,7 +10,7 @@ export function analyseInProcess<Input extends object, Output>(
 ): Promise<Output> {
   return new Promise((resolve, reject) => {
     const child = fork(module, [], {
-      execArgv: ['--max-opt=1', '--no-concurrent-sparkplug'],
+      execArgv: ['--no-concurrent-sparkplug'],
       serialization: 'advanced',
       stdio: ['ignore', 'ignore', 'inherit', 'ipc'],
     });

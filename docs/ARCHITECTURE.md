@@ -64,7 +64,7 @@ The C64/NES host uses the shared shell. An N64 player and worker host exist unde
 
 Browser input is a neutral set of pressed controls. The selected system converts that to CIA pins, NES controller bits or N64 buttons/stick values. System-specific input logs are sampled at original game polling points. A system profile supplies display size and frame timing; the web shell does not import C64 hardware.
 
-Node analysis can compile recovered instructions while exploring a trace. Static browser output contains only emitted functions and execution support. Per-route child processes isolate analysis heaps; a crash or failed comparison fails the build. Baseline V8 settings are being checked on this host because optimized analysis has crashed natively. This is not a correctness fallback.
+Node analysis can compile recovered instructions while exploring a trace. Static browser output contains only emitted functions and execution support. Per-route child processes isolate analysis heaps; a crash or failed comparison fails the build. Node runs with `--no-concurrent-sparkplug`: V8's concurrent Sparkplug compilation of the very large generated code crashes natively, while the optimizing tiers are stable. This is not a correctness fallback.
 
 ## Verification and honesty
 

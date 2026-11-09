@@ -20,8 +20,16 @@ import type { StartupOptions } from '../../../../startup.js';
 
 export const defaultNebulusWebDirectory = gameBuildDirectory('c64/nebulus');
 export async function buildNebulusWeb(
-  options: StartupOptions & { onProgress?: (message: string) => void } = {},
+  options: StartupOptions & {
+    onProgress?: (message: string) => void;
+    /** Replay the exported static program against original-instruction traces
+     * and assert parity (default true). `npm run build` passes false: packages
+     * are identical, only the manifest's verification section reports
+     * 'not-run'. `verify-game` and tests keep verifying. */
+    verify?: boolean;
+  } = {},
 ) {
+  const verify = options.verify ?? true;
   const directory = resolve(options.outputDirectory ?? defaultNebulusWebDirectory);
   options.onProgress?.('Booting Nebulus and entering the first tower');
   const start = await startNebulusGame({
@@ -161,75 +169,77 @@ export async function buildNebulusWeb(
   );
   await writeStaticProgram(program, join(directory, 'analysis'));
   options.onProgress?.(`Emitting ${program.shapes.length} guarded Nebulus instruction shapes`);
-  const programDirectory = await mkdtemp(join(tmpdir(), 'romstudio-nebulus-program-'));
   const checks: { name: string; passed: boolean }[] = [];
-  try {
-    await writeFile(join(programDirectory, 'package.json'), JSON.stringify({ type: 'module' }));
-    const path = join(programDirectory, 'program.js');
-    await writeStaticProgram(program, programDirectory);
-    for (const trace of traces) {
-      options.onProgress?.(`Checking exported Nebulus: ${trace.route.id}`);
-      const replay = await analyseInProcess<NebulusAnalysisJob, NebulusAnalysisResult>(worker, {
-        checkpoint: trace.launch,
-        id: trace.route.id,
-        frames: trace.route.frames,
-        inputs: trace.data.inputs,
-        capture: trace.capture,
-        program: pathToFileURL(path).href,
-      });
-      if (
-        trace.audio &&
-        (!replay.audio ||
-          sha256(
-            new Uint8Array(replay.audio.buffer, replay.audio.byteOffset, replay.audio.byteLength),
-          ) !==
-            sha256(
-              new Uint8Array(trace.audio.buffer, trace.audio.byteOffset, trace.audio.byteLength),
-            ))
-      ) {
-        throw new Diagnostic('NEBULUS_AUDIO', `SID sample replay differs on ${trace.route.id}.`);
-      }
-      checks.push({
-        name: `${trace.route.id}-static-replay`,
-        passed: JSON.stringify(replay.fingerprint) === JSON.stringify(trace.fingerprint),
-      });
-    }
-  } finally {
-    await rm(programDirectory, { recursive: true, force: true });
-  }
   const example = traces.find((trace) => trace.route.id === 'title-example')!;
-  const music = traces.find((trace) => trace.route.id === 'title-music')!;
-  const entered = traces.find((trace) => trace.route.id === 'title-start')!;
-  checks.push({
-    name: 'title-waits-for-fire',
-    passed: music.data.waitingToStart && music.data.logicTicks === 0,
-  });
-  checks.push({
-    name: 'title-music-audible',
-    passed: !!music.audio?.some((sample) => Math.abs(sample) > 0.001),
-  });
-  // Check entry before the longer example can lose its lives and return to
-  // the title screen. An example's final menu flag cannot prove start failed.
-  checks.push({
-    name: 'fire-starts-original-game',
-    passed: !entered.data.waitingToStart && entered.data.logicTicks > 0,
-  });
-  checks.push({
-    name: 'original-movement',
-    passed: traces.some((trace) => trace.bounds.maxRotation > trace.bounds.minRotation),
-  });
-  checks.push({
-    name: 'original-death-and-respawn',
-    passed: traces.some((trace) => trace.bounds.minLives < 3),
-  });
-  checks.push({
-    name: 'static-code',
-    passed: !/\b(?:eval|new Function)\s*\(/.test(program.javascript),
-  });
-  checks.push({
-    name: 'sid-audio-replay',
-    passed: !!example.audio?.some((sample) => Math.abs(sample) > 0.001),
-  });
+  if (verify) {
+    const programDirectory = await mkdtemp(join(tmpdir(), 'romstudio-nebulus-program-'));
+    try {
+      await writeFile(join(programDirectory, 'package.json'), JSON.stringify({ type: 'module' }));
+      const path = join(programDirectory, 'program.js');
+      await writeStaticProgram(program, programDirectory);
+      for (const trace of traces) {
+        options.onProgress?.(`Checking exported Nebulus: ${trace.route.id}`);
+        const replay = await analyseInProcess<NebulusAnalysisJob, NebulusAnalysisResult>(worker, {
+          checkpoint: trace.launch,
+          id: trace.route.id,
+          frames: trace.route.frames,
+          inputs: trace.data.inputs,
+          capture: trace.capture,
+          program: pathToFileURL(path).href,
+        });
+        if (
+          trace.audio &&
+          (!replay.audio ||
+            sha256(
+              new Uint8Array(replay.audio.buffer, replay.audio.byteOffset, replay.audio.byteLength),
+            ) !==
+              sha256(
+                new Uint8Array(trace.audio.buffer, trace.audio.byteOffset, trace.audio.byteLength),
+              ))
+        ) {
+          throw new Diagnostic('NEBULUS_AUDIO', `SID sample replay differs on ${trace.route.id}.`);
+        }
+        checks.push({
+          name: `${trace.route.id}-static-replay`,
+          passed: JSON.stringify(replay.fingerprint) === JSON.stringify(trace.fingerprint),
+        });
+      }
+    } finally {
+      await rm(programDirectory, { recursive: true, force: true });
+    }
+    const music = traces.find((trace) => trace.route.id === 'title-music')!;
+    const entered = traces.find((trace) => trace.route.id === 'title-start')!;
+    checks.push({
+      name: 'title-waits-for-fire',
+      passed: music.data.waitingToStart && music.data.logicTicks === 0,
+    });
+    checks.push({
+      name: 'title-music-audible',
+      passed: !!music.audio?.some((sample) => Math.abs(sample) > 0.001),
+    });
+    // Check entry before the longer example can lose its lives and return to
+    // the title screen. An example's final menu flag cannot prove start failed.
+    checks.push({
+      name: 'fire-starts-original-game',
+      passed: !entered.data.waitingToStart && entered.data.logicTicks > 0,
+    });
+    checks.push({
+      name: 'original-movement',
+      passed: traces.some((trace) => trace.bounds.maxRotation > trace.bounds.minRotation),
+    });
+    checks.push({
+      name: 'original-death-and-respawn',
+      passed: traces.some((trace) => trace.bounds.minLives < 3),
+    });
+    checks.push({
+      name: 'static-code',
+      passed: !/\b(?:eval|new Function)\s*\(/.test(program.javascript),
+    });
+    checks.push({
+      name: 'sid-audio-replay',
+      passed: !!example.audio?.some((sample) => Math.abs(sample) > 0.001),
+    });
+  }
   await writeFile(
     join(directory, 'analysis/verification-checks.json'),
     JSON.stringify(checks, null, 2),
@@ -267,7 +277,7 @@ export async function buildNebulusWeb(
         towers: [1],
       },
       verification: {
-        referenceReplay: 'passed',
+        referenceReplay: verify ? 'passed' : 'not-run',
         hardwareParity: 'unverified',
         checks,
         hashes: example.fingerprint,

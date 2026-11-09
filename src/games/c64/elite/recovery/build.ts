@@ -95,8 +95,16 @@ const routes = [
   },
 ];
 export async function buildEliteWeb(
-  options: StartupOptions & { onProgress?: (message: string) => void } = {},
+  options: StartupOptions & {
+    onProgress?: (message: string) => void;
+    /** Replay the exported static program against original-instruction traces
+     * and assert parity (default true). `npm run build` passes false: packages
+     * are identical, only the manifest's verification section reports
+     * 'not-run'. `verify-game` and tests keep verifying. */
+    verify?: boolean;
+  } = {},
 ) {
+  const verify = options.verify ?? true;
   const directory = resolve(options.outputDirectory ?? gameBuildDirectory('c64/elite'));
   options.onProgress?.('Booting Elite and declining ten trainers');
   const boot = await bootElite({ ...options, outputDirectory: join(directory, 'analysis/boot') }),
@@ -129,28 +137,30 @@ export async function buildEliteWeb(
       ],
     ),
     checks: { name: string; passed: boolean }[] = [];
-  const temporary = await mkdtemp(join(tmpdir(), 'rom-studio-elite-'));
-  try {
-    await writeFile(join(temporary, 'package.json'), JSON.stringify({ type: 'module' }));
-    const path = join(temporary, 'program.js');
-    await writeStaticProgram(program, temporary);
-    for (const trace of traces) {
-      options.onProgress?.(`Checking exported Elite: ${trace.route.id}`);
-      const replay = await analyseInProcess<EliteJob, EliteEvidence>(worker, {
-        checkpoint: boot.checkpoint,
-        frames: trace.route.frames,
-        inputs: trace.evidence.inputs,
-        program: pathToFileURL(path).href,
-      });
-      checks.push({
-        name: trace.route.id + '-static-replay',
-        passed:
-          JSON.stringify(replay.fingerprint) === JSON.stringify(trace.evidence.fingerprint) &&
-          replay.audioHash === trace.evidence.audioHash,
-      });
+  if (verify) {
+    const temporary = await mkdtemp(join(tmpdir(), 'rom-studio-elite-'));
+    try {
+      await writeFile(join(temporary, 'package.json'), JSON.stringify({ type: 'module' }));
+      const path = join(temporary, 'program.js');
+      await writeStaticProgram(program, temporary);
+      for (const trace of traces) {
+        options.onProgress?.(`Checking exported Elite: ${trace.route.id}`);
+        const replay = await analyseInProcess<EliteJob, EliteEvidence>(worker, {
+          checkpoint: boot.checkpoint,
+          frames: trace.route.frames,
+          inputs: trace.evidence.inputs,
+          program: pathToFileURL(path).href,
+        });
+        checks.push({
+          name: trace.route.id + '-static-replay',
+          passed:
+            JSON.stringify(replay.fingerprint) === JSON.stringify(trace.evidence.fingerprint) &&
+            replay.audioHash === trace.evidence.audioHash,
+        });
+      }
+    } finally {
+      await rm(temporary, { recursive: true, force: true });
     }
-  } finally {
-    await rm(temporary, { recursive: true, force: true });
   }
   if (checks.some((check) => !check.passed)) {
     throw new Diagnostic('ELITE_PARITY', JSON.stringify(checks));
@@ -179,7 +189,11 @@ export async function buildEliteWeb(
         artifact: 'static-commander-and-flight-study',
         playable: true,
       },
-      verification: { referenceReplay: 'passed', hardwareParity: 'unverified', checks },
+      verification: {
+        referenceReplay: verify ? 'passed' : 'not-run',
+        hardwareParity: 'unverified',
+        checks,
+      },
       backend: {
         kind: 'static-source-address-functions',
         shapes: program.shapes.length,

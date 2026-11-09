@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { Diagnostic, sha256 } from '../../../../core.js';
-import { gameBuildDirectory } from '../../../../paths.js';
+import { gameCaptureDirectory } from '../../../../paths.js';
 import {
   sourceSnapshot,
   assertSourceSnapshot,
@@ -134,7 +134,7 @@ export async function prepareSm64Playback(options: Sm64PlaybackOptions = {}) {
       'Select a title fixture or an original replay reference, not both.',
     );
   }
-  const directory = join(gameBuildDirectory('n64/sm64'), 'analysis/playback');
+  const directory = join(gameCaptureDirectory('n64/sm64'), 'playback');
   await mkdir(directory, { recursive: true });
   const media = await loadSm64Cartridge(options);
   let fixture: { record: PlaybackRecord; files: Record<string, Uint8Array> } | undefined;
@@ -496,12 +496,29 @@ const packagedFiles = [
   'rsp-observed.json',
 ];
 
+/** Cheap check for build planning: is any saved capture present? */
+export async function hasSm64Capture(): Promise<boolean> {
+  const directory = join(gameCaptureDirectory('n64/sm64'), 'playback');
+  const names = await readdir(directory).catch(() => [] as string[]);
+  for (const name of names.filter((name) => /^[a-f0-9]{64}$/.test(name))) {
+    if (
+      await stat(join(directory, name, 'record.json')).then(
+        () => true,
+        () => false,
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Build input: the passing capture verified for the current sources, or
  * otherwise the newest passing capture for this cartridge. Packaging reuses
  * it with the current code and never re-verifies; `current` says whether its
  * verification applies to the sources being packaged. */
 export async function loadSm64Capture(options: StartupOptions = {}) {
-  const directory = join(gameBuildDirectory('n64/sm64'), 'analysis/playback');
+  const directory = join(gameCaptureDirectory('n64/sm64'), 'playback');
   const media = await loadSm64Cartridge(options);
   const names = await readdir(directory).catch((error: NodeJS.ErrnoException) => {
     if (error.code === 'ENOENT') {

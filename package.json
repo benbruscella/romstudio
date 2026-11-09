@@ -11,12 +11,12 @@
     "roms": "./dist/tools/src/cli.js"
   },
   "scripts": {
-    "dev": "tsc -p tsconfig.json && node --max-opt=1 --no-concurrent-sparkplug dist/tools/src/cli.js dev",
-    "build": "tsc -p tsconfig.json && node --max-opt=1 --no-concurrent-sparkplug dist/tools/src/cli.js build",
+    "dev": "tsc -p tsconfig.json && node --no-concurrent-sparkplug dist/tools/src/cli.js dev",
+    "build": "tsc -p tsconfig.json && node --no-concurrent-sparkplug dist/tools/src/cli.js build",
     "test": "tsc -p tsconfig.json && node dist/tools/src/testing/run.js",
     "check": "prettier . --check && eslint src eslint.config.js --max-warnings 0 && tsc -p tsconfig.json --noEmit",
     "fix": "prettier . --write && eslint src eslint.config.js --fix",
-    "cli": "tsc -p tsconfig.json && node --max-opt=1 --no-concurrent-sparkplug dist/tools/src/cli.js"
+    "cli": "tsc -p tsconfig.json && node --no-concurrent-sparkplug dist/tools/src/cli.js"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

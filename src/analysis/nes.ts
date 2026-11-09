@@ -28,12 +28,18 @@ export interface NesGameStudy {
   title: string;
   routes: readonly NesRoute[];
 }
+export type NesBuildOptions = StartupOptions & {
+  onProgress?: (message: string) => void;
+  /** Run the original/static comparisons (exported-program replay of every route
+   * with fingerprint and per-frame PCM checks). Default true, as `verify-game`
+   * and tests need. `false` packages the same files from original recovery alone
+   * and records the reference replay as 'not-run'. */
+  verify?: boolean;
+};
 /** Common NES recovery and packaging. Per-game choices and input routes are
  * data supplied by the study; cartridge/PPU behavior stays in the system. */
-export async function buildNesGame(
-  study: NesGameStudy,
-  options: StartupOptions & { onProgress?: (message: string) => void } = {},
-) {
+export async function buildNesGame(study: NesGameStudy, options: NesBuildOptions = {}) {
+  const verify = options.verify ?? true;
   const recipeBytes = await readBounded(
     options.recipePath ?? join(repositoryRoot, `src/games/nes/${study.id}/recipe.json`),
     65536,
@@ -131,35 +137,38 @@ export async function buildNesGame(
       return decode(scratch, variant.address);
     });
   await writeFile(join(directory, 'analysis/original.asm'), listing(instructions));
-  const temporary = await mkdtemp(join(tmpdir(), 'rom-studio-nes-')),
-    checks: { name: string; passed: boolean }[] = [];
-  try {
-    await writeFile(join(temporary, 'package.json'), JSON.stringify({ type: 'module' }));
-    const path = join(temporary, 'program.js');
-    await writeStaticProgram(program, temporary);
-    for (const trace of traces) {
-      options.onProgress?.(`Checking exported ${study.title}: ${trace.route.id}`);
-      const replay = await analyseInProcess<NesAnalysisJob, NesAnalysisResult>(worker, {
-        launch,
-        route: trace.route,
-        program: pathToFileURL(path).href,
-        recording: trace.result.inputs,
-      });
-      await writeFile(
-        join(directory, `analysis/${trace.route.id}-replay.json`),
-        JSON.stringify({ ...replay, pixels: undefined }),
-      );
-      checks.push({
-        name: trace.route.id + '-static-replay',
-        passed: JSON.stringify(replay.fingerprint) === JSON.stringify(trace.result.fingerprint),
-      });
-      checks.push({
-        name: trace.route.id + '-per-frame-pcm',
-        passed: JSON.stringify(replay.audio) === JSON.stringify(trace.result.audio),
-      });
+  const checks: { name: string; passed: boolean }[] = [];
+  // The exported-program replays only feed the checks below; package files never use them.
+  if (verify) {
+    const temporary = await mkdtemp(join(tmpdir(), 'rom-studio-nes-'));
+    try {
+      await writeFile(join(temporary, 'package.json'), JSON.stringify({ type: 'module' }));
+      const path = join(temporary, 'program.js');
+      await writeStaticProgram(program, temporary);
+      for (const trace of traces) {
+        options.onProgress?.(`Checking exported ${study.title}: ${trace.route.id}`);
+        const replay = await analyseInProcess<NesAnalysisJob, NesAnalysisResult>(worker, {
+          launch,
+          route: trace.route,
+          program: pathToFileURL(path).href,
+          recording: trace.result.inputs,
+        });
+        await writeFile(
+          join(directory, `analysis/${trace.route.id}-replay.json`),
+          JSON.stringify({ ...replay, pixels: undefined }),
+        );
+        checks.push({
+          name: trace.route.id + '-static-replay',
+          passed: JSON.stringify(replay.fingerprint) === JSON.stringify(trace.result.fingerprint),
+        });
+        checks.push({
+          name: trace.route.id + '-per-frame-pcm',
+          passed: JSON.stringify(replay.audio) === JSON.stringify(trace.result.audio),
+        });
+      }
+    } finally {
+      await rm(temporary, { recursive: true, force: true });
     }
-  } finally {
-    await rm(temporary, { recursive: true, force: true });
   }
   checks.push({
     name: 'original-input-and-nmi',
@@ -197,7 +206,7 @@ export async function buildNesGame(
       buildId: sha256(recipeBytes),
       build: { status: 'release-ready', artifact: 'static-nes-browser-study', playable: true },
       verification: {
-        referenceReplay: 'passed',
+        referenceReplay: verify ? 'passed' : 'not-run',
         hardwareParity: 'unverified',
         checks,
         observations: traces.map((trace) => ({ id: trace.route.id, ...trace.result.observations })),
@@ -224,7 +233,7 @@ export async function buildNesGame(
         samples: example.result.audio.samples,
         nonzeroSamples: example.result.audio.nonzeroSamples,
         sha256: example.result.audio.sha256,
-        perVideoFrameReplay: 'passed',
+        perVideoFrameReplay: verify ? 'passed' : 'not-run',
         observations: traces.map(({ route, result }) => ({
           id: route.id,
           frames: result.audio.frames.length,
