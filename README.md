@@ -38,7 +38,7 @@ Open the URL printed by `dev`, choose a system, then a game. `identify` inspects
 | `npm run check`, `npm run fix` | Format, lint and type checks; automatic fixes                                                                              |
 | `npm run cli -- <command>`     | The `roms` tool: identification, one-game builds and verification, preview and recovery stages                             |
 
-Building packages each game from its saved recovery capture; testing reruns recovery and checks the result. Deployment builds with `--deploy`, which also requires every required game to be release-ready and verified for the current sources; CI does this after the integration tests. v0.1 requires all six games and the workbench. For romstud.io, CI uses `npm run build -- --deploy --domain romstud.io`; a project-path Pages build uses `--base /romstudio/`. See [build and deployment](docs/BUILD.md).
+Building packages each game from its saved recovery capture; testing reruns recovery and checks the result. Deployment builds with `--deploy`, which verifies every game against the original and requires every required game to be release-ready and verified for the current sources; CI does this after the integration tests. v0.1 requires all six games and the workbench. For romstud.io, CI uses `npm run build -- --deploy --domain romstud.io`; a project-path Pages build uses `--base /romstudio/`. See [build and deployment](docs/BUILD.md).
 
 The installed CLI is **`roms`**. From this checkout use `npm run cli -- <command>`; [CLI.md](docs/CLI.md) explains installation, identification and advanced analysis.
 

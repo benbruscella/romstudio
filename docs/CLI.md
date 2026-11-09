@@ -58,7 +58,7 @@ npm run cli -- verify-game n64/sm64
 npm run cli -- preview
 ```
 
-`build` packages every registered game with the current code, checks their manifests, includes hashed media and learning evidence, and writes `dist/site/` with experimental studies. `build-game` packages one game. Packaging reuses saved recovery captures; `verify-game` reruns one game's original recovery and original/static comparison and records the result, and `npm test` runs these for installed media. `--deploy`, used by CI, excludes studies and rejects any required game that is unfinished or not verified for the current sources. `preview` serves the existing site using its configured base path.
+`build` packages every registered game with the current code, checks their manifests, includes hashed media and learning evidence, and writes `dist/site/` with experimental studies. `build-game` packages one game. Packaging reuses saved recovery captures; `verify-game` reruns one game's original recovery and original/static comparison and records the result, and `npm test` runs these for installed media. `--deploy`, used by CI, verifies every game (as `verify-game` does) instead of packaging from captures, excludes studies and rejects any required game that is unfinished or not verified for the current sources. `preview` serves the existing site using its configured base path.
 
 ### Selecting a platform version
 

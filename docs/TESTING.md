@@ -11,7 +11,7 @@ npm test -- integration
 npm run dev -- --port 4175
 ```
 
-Integration tests and the full build require the pinned originals described in [ROMS.md](ROMS.md). A source-only checkout can run checks, unit tests and `npm run dev` to browse the learning material. `npm run build` packages games for local review; only `build --deploy` enforces the six-game gate before publishing. Integration tests run game verification: original recovery and original/static comparison for the current sources.
+Integration tests and the full build require the pinned originals described in [ROMS.md](ROMS.md). A source-only checkout can run checks, unit tests and `npm run dev` to browse the learning material. `npm run build` packages games for local review; only `build --deploy` enforces the six-game gate before publishing. Integration tests run game verification in temporary folders: original recovery and original/static comparison for the current sources. `build --deploy` verifies every game again for the packages it publishes.
 
 ## Library and learning
 

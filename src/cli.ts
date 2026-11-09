@@ -110,6 +110,15 @@ function argumentsFor(args: string[]): { files: string[]; flags: Record<string, 
   return { files, flags };
 }
 async function main(): Promise<void> {
+  // package.json requires Node 26 (.nvmrc). Node 24 crashes natively far more
+  // often on the large generated game modules, so fail clearly instead.
+  const major = Number(process.versions.node.split('.')[0]);
+  if (major < 26) {
+    throw new Diagnostic(
+      'NODE_VERSION',
+      `ROM Studio needs Node 26 or newer (see .nvmrc); this is Node ${process.versions.node}. Run fnm use or nvm use.`,
+    );
+  }
   const [requestedCommand, ...rest] = process.argv.slice(2);
   let command = requestedCommand;
   if (command === '--version') {
@@ -183,7 +192,11 @@ async function main(): Promise<void> {
     );
     if (command !== 'preview') {
       // Game packages build in parallel processes; the site then assembles them.
-      await buildGames(await planGameBuilds(), (message) => console.error(message));
+      // A deploy build verifies every game against the original first.
+      const verify = command === 'build' && flags.deploy === 'true';
+      await buildGames(await planGameBuilds({ verify }), (message) => console.error(message), {
+        verify,
+      });
       await buildSite({
         outputDirectory,
         rebuild: false,

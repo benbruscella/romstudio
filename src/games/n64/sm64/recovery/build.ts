@@ -18,6 +18,7 @@ import { assertSourceSnapshot } from '../../../../analysis/source-snapshot.js';
 /** N64 packaging owns no CPU decoder at runtime. The browser gets original
  * instruction functions, exact captured launch memories and its worker UI. */
 export async function buildSm64Web(options: Sm64PlaybackOptions = {}) {
+  await ensureSm64StartupStudy(options);
   const prepared = await prepareSm64Playback(options);
   return packageSm64Playback(prepared, options);
 }
@@ -25,22 +26,27 @@ export async function buildSm64Web(options: Sm64PlaybackOptions = {}) {
 /** Build: package the saved recovery capture with the current code, without
  * re-verifying. The manifest marks verification stale unless the capture was
  * verified for these exact sources; `verify-game` refreshes it. */
-export async function packageSm64Web(options: Sm64PlaybackOptions = {}) {
-  // The bounded CPU startup study ships as Learn source; it lives in
-  // disposable dist/, so recreate it when a clean build finds it missing.
+/** The bounded CPU startup study ships as Learn source. It lives in
+ * disposable dist/, so recreate it when a clean build finds it missing. */
+async function ensureSm64StartupStudy(options: Sm64PlaybackOptions): Promise<void> {
   const study = join(gameBuildDirectory('n64/sm64'), 'analysis/startup/source-study/manifest.json');
   if (
-    !(await stat(study).then(
+    await stat(study).then(
       () => true,
       () => false,
-    ))
+    )
   ) {
-    options.onProgress?.('Recreating the SM64 startup study for Learn (about a minute)…');
-    // The study writes to its own analysis folder, not the package directory.
-    const startup = { ...options };
-    delete startup.outputDirectory;
-    await bootSm64(startup);
+    return;
   }
+  options.onProgress?.('Recreating the SM64 startup study for Learn (about a minute)…');
+  // The study writes to its own analysis folder, not the package directory.
+  const startup = { ...options };
+  delete startup.outputDirectory;
+  await bootSm64(startup);
+}
+
+export async function packageSm64Web(options: Sm64PlaybackOptions = {}) {
+  await ensureSm64StartupStudy(options);
   let capture: Awaited<ReturnType<typeof loadSm64Capture>>;
   try {
     capture = await loadSm64Capture(options);

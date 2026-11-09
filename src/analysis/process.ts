@@ -1,13 +1,36 @@
 import { fork } from 'node:child_process';
 import { Diagnostic } from '../core.js';
 
+/** Native crash signals. V8 on macOS ARM64 intermittently faults in JIT code
+ * on the very large generated game modules (see docs/BUILD.md). */
+const hostCrashes = new Set(['SIGSEGV', 'SIGBUS', 'SIGTRAP', 'SIGILL']);
+const hostCrashRetries = 2;
+
 /** Run a trusted analysis module in its own host process. Original execution
- * and static replay get independent compiler heaps; a crash is a failed build,
- * never a retry or a substitute game implementation. No shell is involved. */
-export function analyseInProcess<Input extends object, Output>(
+ * and static replay get independent compiler heaps. A native host crash
+ * reruns the same deterministic analysis (at most twice, reported); its
+ * result is still checked in full. Any error, failed check or other exit
+ * fails the build. Never a substitute game implementation. No shell. */
+export async function analyseInProcess<Input extends object, Output>(
   module: URL,
   input: Input,
 ): Promise<Output> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await analyseOnce<Input, Output>(module, input);
+    } catch (error) {
+      const signal = (error as { signal?: string }).signal;
+      if (!signal || !hostCrashes.has(signal) || attempt >= hostCrashRetries) {
+        throw error;
+      }
+      console.error(
+        `Analysis process crashed natively (${signal}); rerunning the same analysis (${attempt + 1}/${hostCrashRetries}).`,
+      );
+    }
+  }
+}
+
+function analyseOnce<Input extends object, Output>(module: URL, input: Input): Promise<Output> {
   return new Promise((resolve, reject) => {
     const child = fork(module, [], {
       execArgv: ['--no-concurrent-sparkplug'],
@@ -28,9 +51,13 @@ export function analyseInProcess<Input extends object, Output>(
       clearTimeout(timer);
       if (code !== 0 || !result?.ok) {
         reject(
-          new Diagnostic(
-            'ANALYSIS_PROCESS',
-            result?.error ?? `Analysis process stopped: ${signal ?? code}.`,
+          Object.assign(
+            new Diagnostic(
+              'ANALYSIS_PROCESS',
+              result?.error ?? `Analysis process stopped: ${signal ?? code}.`,
+            ),
+            // Only a crash with no reported result is a host crash.
+            { signal: result ? undefined : (signal ?? undefined) },
           ),
         );
       } else {

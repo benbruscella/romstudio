@@ -11,7 +11,9 @@ import { titles, type TitleId } from '../titles.js';
  * Builds game packages for `npm run build` and `npm run dev`, in parallel
  * child processes. Packaging reuses saved recovery captures; a game without
  * a capture or package recovers once (without the original/static comparison,
- * which belongs to `verify-game` and the tests).
+ * which belongs to `verify-game` and the tests). Deploy builds verify every
+ * game against the original, because they start from nothing on CI and
+ * publish only packages verified for the current sources.
  */
 export interface GameBuild {
   key: TitleId;
@@ -30,11 +32,17 @@ const packageExists = (key: TitleId) =>
     () => false,
   );
 
-export async function planGameBuilds(): Promise<GameBuild[]> {
+export async function planGameBuilds(options: { verify?: boolean } = {}): Promise<GameBuild[]> {
   const plan: GameBuild[] = [];
   for (const key of Object.keys(titles) as TitleId[]) {
     const title = titles[key];
-    if ('package' in title) {
+    if (options.verify) {
+      plan.push({
+        key,
+        work: true,
+        description: 'recover and verify against the original, then package (minutes)',
+      });
+    } else if ('package' in title) {
       plan.push({
         key,
         work: true,
@@ -59,11 +67,12 @@ export async function planGameBuilds(): Promise<GameBuild[]> {
   return plan;
 }
 
-/** Runs `roms build-game` for each planned game in a separate process, with
+/** Runs `roms build-game` (or `verify-game` for deploy) for each planned game in a separate process, with
  * prefixed output, a heartbeat every 30 s and per-game timings. */
 export async function buildGames(
   plan: readonly GameBuild[],
   progress: (message: string) => void,
+  options: { verify?: boolean } = {},
 ): Promise<void> {
   const started = Date.now(),
     pending = plan.filter((game) => game.work),
@@ -86,7 +95,7 @@ export async function buildGames(
       running.set(key, since);
       const child = spawn(
         process.execPath,
-        [...process.execArgv, cli, 'build-game', key, '--quiet'],
+        [...process.execArgv, cli, options.verify ? 'verify-game' : 'build-game', key, '--quiet'],
         {
           stdio: ['ignore', 'pipe', 'pipe'],
         },
