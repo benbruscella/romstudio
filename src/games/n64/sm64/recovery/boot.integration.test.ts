@@ -59,7 +59,9 @@ test('SM64 EU graphics handoffs replay buffer clears, texture samples and render
     assert.ok('image' in report.graphics);
     assert.equal(report.graphics.instructions, 373418);
     assert.equal(report.graphics.display.triangles.length, 282);
-    assert.equal(report.graphics.image.nonblackPixels, 16);
+    // 15 since the anti-aliased blend fix (blend only without coverage
+    // overflow and when not clearly in front); execution is unchanged.
+    assert.equal(report.graphics.image.nonblackPixels, 15);
     assert.equal(report.graphics.verification.pixelPrecision, 'functional-approximation');
     assert.equal(report.capture.referenceReplayAfterFirstAudioRequest, 'unverified');
     assert.equal(report.verification.gameplay, 'unverified');
