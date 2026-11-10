@@ -72,7 +72,11 @@ Node on macOS ARM64 has crashed natively during large analyses; Bun has also cra
 
 ## CI on merge to main
 
-The workflow in `.github/workflows/check.yml` checks pull requests. A push to main, including a merged PR, runs the dependency chain: **format/lint/types → unit tests → restore pinned media → integration tests → `npm run build -- --deploy --domain romstud.io`, which verifies every game against the original → Pages deployment**. A failed check, test, hash or game replay prevents deployment. The integration tests recover in temporary folders and leave no packages, so the deploy build does its own verification. Merging to main deploys once these pass; to require a manual approval, add a required reviewer to the `github-pages` environment in repository settings. PRs do not publish a site.
+The workflow in `.github/workflows/check.yml` checks pull requests. A push to main, including a merged PR, runs the dependency chain: **format/lint/types → unit tests → restore pinned media → `npm run build -- --deploy`, which verifies every game against the original → integration tests, including ROM Desk stepping on the built packages → Pages settings → Pages deployment**. A failed check, test, hash or game replay prevents deployment. Merging to main deploys once these pass; to require a manual approval, add a required reviewer to the `github-pages` environment in repository settings. PRs do not publish a site.
+
+The build targets the project URL (`https://benbruscella.github.io/romstudio/`, base `/romstudio/`) until the repository variable **`PAGES_DOMAIN`** is set. With `PAGES_DOMAIN=romstud.io` it builds for the domain root (base `/`). Set the variable only once the domain's DNS points at GitHub Pages. GitHub redirects the project URL to the custom domain, so setting it early makes the site unreachable.
+
+Before deploying, the deploy job makes sure Pages publishes from GitHub Actions and, when `PAGES_DOMAIN` is set, that the custom domain is configured. Actions deployments ignore the artifact's `CNAME`. Changing these settings needs a repository admin token, so the step runs only when the secret **`PAGES_ADMIN_TOKEN`** exists: a fine-grained personal access token for this repository with **Administration** and **Pages** read and write. Without the secret, the step warns, and the settings must be made once by hand (Settings → Pages).
 
 The repository does not contain the original media. The workflow reads one owner-approved release asset: `rom-studio-media.json.gz` attached to the `build-inputs` release. Each bundled identity and byte hash must match the current game recipes before any file is restored. The importer refuses extra identities, changed existing files and extraction paths supplied by the archive.
 
@@ -82,9 +86,22 @@ Prepare that input bundle locally:
 npm run cli -- media bundle
 ```
 
-It writes `dist/work/rom-studio-media.json.gz` and refuses to overwrite an existing bundle. After the owner approves publishing, attach that exact file to the `build-inputs` release in this repository. It contains all ten current pinned source inputs, including the SM64 cartridge, and contains no development caches or host paths. A missing or outdated bundle fails CI explicitly; it never substitutes different game bytes.
+It writes `dist/work/rom-studio-media.json.gz` and refuses to overwrite an existing bundle. Attach that exact file to the `build-inputs` release in this repository, once:
 
-In GitHub repository settings, choose **Pages → GitHub Actions** as the publishing source and configure **romstud.io** as the custom domain. Follow the linked GitHub domain guide for DNS and HTTPS. The workflow publishes only `dist/site/` using the Pages environment. These repository/domain changes and the first push/deployment have not been performed locally.
+```sh
+gh release create build-inputs dist/work/rom-studio-media.json.gz --title "Build inputs" --notes "Pinned game inputs for CI"
+```
+
+After a recipe changes, replace the asset with `gh release upload build-inputs dist/work/rom-studio-media.json.gz --clobber`. The bundle contains all ten current pinned source inputs, including the SM64 cartridge, and no development caches or host paths. A missing or outdated bundle fails CI with an explicit error; it never substitutes different game bytes.
+
+### One-time setup for romstud.io
+
+1. Create the `build-inputs` release (above).
+2. Add the `PAGES_ADMIN_TOKEN` secret, or set **Settings → Pages → Source: GitHub Actions** by hand.
+3. Verify `romstud.io` for your account: GitHub profile → Settings → Pages → **Add a domain**, then add the TXT record it shows (`_github-pages-challenge-benbruscella.romstud.io`).
+4. At the DNS host, point the apex at GitHub Pages: A records `185.199.108.153`, `185.199.109.153`, `185.199.110.153` and `185.199.111.153`; AAAA records `2606:50c0:8000::153` through `2606:50c0:8003::153`; and `www` as a CNAME to `benbruscella.github.io`. Remove other apex A, AAAA or ALIAS records. Confirm the addresses in [GitHub's custom-domain guide](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
+5. When `dig romstud.io +noall +answer` shows those addresses, set the repository variable `PAGES_DOMAIN=romstud.io` (Settings → Secrets and variables → Actions → Variables). Then rerun the workflow, or merge to main.
+6. After the certificate is issued, tick **Enforce HTTPS** in Settings → Pages.
 
 ## Executable studies and ready games
 
