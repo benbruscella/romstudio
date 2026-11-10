@@ -41,17 +41,17 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Fetch pinned game inputs
+      # The pinned inputs are committed encrypted; MEDIA_KEY opens them. Both
+      # come from `npm run cli -- deploy-setup` (docs/BUILD.md).
+      - name: Verify and restore media by recipe identity
         env:
-          GH_TOKEN: ${{ github.token }}
+          MEDIA_KEY: ${{ secrets.MEDIA_KEY }}
         run: |
-          mkdir -p dist/ci-inputs
-          if ! gh release download build-inputs --repo "$GITHUB_REPOSITORY" --pattern rom-studio-media.json.gz --dir dist/ci-inputs; then
-            echo "::error title=Missing game inputs::Create the build-inputs release once from a machine with the original media: npm run cli -- media bundle, then gh release create build-inputs dist/work/rom-studio-media.json.gz --title 'Build inputs' --notes 'Pinned game inputs for CI'. See docs/BUILD.md#ci-on-merge-to-main."
+          if [ ! -f ci/rom-studio-media.sealed ] || [ -z "$MEDIA_KEY" ]; then
+            echo "::error title=Missing game inputs::Run npm run cli -- deploy-setup on a machine with the original media, then commit ci/rom-studio-media.sealed. See docs/BUILD.md#ci-on-merge-to-main."
             exit 1
           fi
-      - name: Verify and restore media by recipe identity
-        run: npm run cli -- media import dist/ci-inputs/rom-studio-media.json.gz
+          npm run cli -- media import ci/rom-studio-media.sealed
       # Until the custom domain's DNS is live, build for the project URL
       # (https://<owner>.github.io/<repo>/). Set the repository variable
       # PAGES_DOMAIN (for example romstud.io) to build for the domain root.
@@ -86,25 +86,17 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # Pages must publish from GitHub Actions (not a branch), with the custom
-      # domain set in repository settings: Actions deployments ignore CNAME.
-      # Changing these needs a repository admin token, stored as the secret
-      # PAGES_ADMIN_TOKEN (fine-grained: Administration and Pages, read and
-      # write, on this repository). Without it, set them once by hand.
-      - name: Configure Pages source and custom domain
+      # Pages must publish from GitHub Actions, not a branch. Workflows cannot
+      # change that setting; `npm run cli -- deploy-setup` does (once).
+      - name: Check Pages publishes from GitHub Actions
         env:
-          GH_TOKEN: ${{ secrets.PAGES_ADMIN_TOKEN }}
-          PAGES_DOMAIN: ${{ vars.PAGES_DOMAIN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::warning title=Pages settings not automated::Add the PAGES_ADMIN_TOKEN secret, or set Settings → Pages → Source to GitHub Actions (and the custom domain) by hand. See docs/BUILD.md#romstudio-and-github-pages."
-            exit 0
+          source=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type || true)
+          if [ "$source" != "workflow" ]; then
+            echo "::error title=Pages source::GitHub Pages publishes from '$source', not GitHub Actions. Run npm run cli -- deploy-setup. See docs/BUILD.md#ci-on-merge-to-main."
+            exit 1
           fi
-          args=(-f build_type=workflow)
-          if [ -n "$PAGES_DOMAIN" ]; then
-            args+=(-f cname="$PAGES_DOMAIN")
-          fi
-          gh api -X PUT "repos/$GITHUB_REPOSITORY/pages" "${args[@]}"
       - uses: actions/configure-pages@v5
       - uses: actions/deploy-pages@v5
         id: deployment
