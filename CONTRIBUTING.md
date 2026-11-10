@@ -65,7 +65,7 @@ npm test -- integration
 
 `check` runs formatting verification, ESLint and TypeScript. Use clear names, short statements and comments explaining the original machine contract; a formatter cannot supply that explanation.
 
-Pull requests run checks and unit tests. Updates to main, including merged pull requests, additionally restore approved media, run real-media integration tests, build the verified site and deploy it to Pages. Build inputs must be refreshed when recipes add or change media; see [CI setup](docs/BUILD.md). The initial push, input upload and deployment still require owner approval.
+Pull requests are verified before merge; merges to main deploy. See [CI and deployment](docs/BUILD.md#ci-pull-requests-and-main).
 
 The lockfile pins the development tools’ minimatch dependency to version 11.0.5 through an override. Keep format/lint/type checks passing when updating it. It is not shipped in game browser bundles.
 

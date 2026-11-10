@@ -40,29 +40,11 @@ Game packages and their recovery evidence live at `dist/work/games/<system>/<gam
 
 ## romstud.io and GitHub Pages
 
-The custom domain is **romstud.io**. Build for its root URL:
+One build works at any address: `npm run build` (or `-- --deploy`) writes `dist/site/` with relative paths. The library finds its base in the browser, from where its `app.js` was loaded. The same files therefore serve `https://romstud.io/`, `https://benbruscella.github.io/romstudio/` and `npm run cli -- preview`, with game URLs such as `/c64/nebulus` or `/romstudio/c64/nebulus`. Navigation uses the History API. The generated [Pages 404 page](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-custom-404-page-for-your-github-pages-site) restores direct game, Desk and Learn links after a refresh, without hash routing. It reopens the library at the site base: a project site's first folder on `*.github.io`, otherwise the domain root. The preview server does the same.
 
-```sh
-npm run build -- --deploy --domain romstud.io
-npm run cli -- preview
-```
-
-This uses base `/` and includes a `CNAME` file for branch-based Pages publication. With an Actions Pages deployment, the custom domain is configured in repository settings; GitHub ignores the artifact's CNAME. Domain and DNS setup are separate from building the artifact. Follow [GitHub's custom-domain guide](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site) when the release is approved. No DNS or repository settings are changed by the build.
-
-For testing the repository URL before the custom domain is configured, use the project base:
-
-Repository: [benbruscella/romstudio](https://github.com/benbruscella/romstudio).
-
-```sh
-npm run build -- --base /romstudio/
-npm run cli -- preview
-```
-
-The deployment unit is the **contents of `dist/site/`**. Configure GitHub Pages to publish that static artifact. A project-path build uses `/romstudio/`, with game URLs such as `/romstudio/c64/nebulus`. The custom-domain build uses `/`, giving `https://romstud.io/c64/nebulus`. Navigation uses the History API. A generated [Pages 404 page](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-custom-404-page-for-your-github-pages-site) redirects through the site's root and restores direct game and Learn links after a refresh, without hash routing.
+The custom domain is not part of the build or the workflow. It is the GitHub Pages setting **Custom domain** (Settings → Pages), set once. GitHub then redirects the github.io address to it and issues the HTTPS certificate. `npm run cli -- deploy-setup --domain romstud.io` sets that field.
 
 A clean remote checkout does not contain the original media, so a remote source-only build cannot reproduce the games unless those inputs are deliberately supplied there. The locally verified site artifact already contains the assets needed to run. Tool binaries, recovery scratch output and original local paths are not part of that artifact.
-
-Preparing a site is separate from publishing it. **v0.1 must be reviewed and explicitly approved by the owner before pushing or deploying.** No release or deployment is approved merely by running these commands.
 
 ## Verification
 
@@ -74,15 +56,13 @@ Node on macOS ARM64 has crashed natively during large analyses; Bun has also cra
 
 `.github/workflows/check.yml` puts the full verification on pull requests, so problems show before merging:
 
-| Event                                         | Jobs                                                                                                                                                                                                                                                                           |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pull request from a branch in this repository | format/lint/types and unit tests, then the verified build (restore the sealed media, `npm run build -- --deploy --domain romstud.io`, which verifies all six games against their originals), then `npm test -- integration`, including ROM Desk stepping on the built packages |
-| Pull request from a fork                      | format/lint/types and unit tests, plus a notice: forks cannot read `MEDIA_KEY`                                                                                                                                                                                                 |
-| Merge to main                                 | format/lint/types and unit tests, the same verified build for the merged commit, then deployment                                                                                                                                                                               |
+| Event                                         | Jobs                                                                                                                                                                                                                                                       |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pull request from a branch in this repository | format/lint/types and unit tests, then the verified build (restore the sealed media, `npm run build -- --deploy`, which verifies all six games against their originals), then `npm test -- integration`, including ROM Desk stepping on the built packages |
+| Pull request from a fork                      | format/lint/types and unit tests, plus a notice: forks cannot read `MEDIA_KEY`                                                                                                                                                                             |
+| Merge to main                                 | format/lint/types and unit tests, the same verified build for the merged commit, then deployment                                                                                                                                                           |
 
 Main does not repeat the integration tests, which the pull request already ran on the same code. It does rebuild and verify, because the site publishes only packages verified for the exact merged commit. A failed check, hash or game replay prevents deployment. To require a manual approval for each deployment, add a required reviewer to the `github-pages` environment.
-
-The custom domain is code: `PAGES_DOMAIN: romstud.io` in the workflow. Builds target its root (base `/`). Actions deployments ignore the artifact's `CNAME`, so before publishing, the deploy job sets the GitHub Pages custom domain to `PAGES_DOMAIN` if it differs. It uses the workflow token, or the optional secret `PAGES_ADMIN_TOKEN` if one exists. If the domain can't be set, the job stops before deploying and the previous site keeps working. After deploying, it turns on Enforce HTTPS once GitHub has issued the certificate, retrying on later deploys until then. DNS for the domain must point at GitHub Pages first (see below).
 
 The original media are committed only in encrypted form: `ci/rom-studio-media.sealed`, an AES-256-GCM sealed copy of the pinned media bundle. Its key exists only as the repository's Actions secret `MEDIA_KEY`. CI opens it with `npm run cli -- media import ci/rom-studio-media.sealed`. Each identity and byte hash must match the current game recipes before any file is restored, and the importer refuses extra identities, changed existing files and extraction paths supplied by the archive. A missing sealed file, a missing key or a wrong key fails CI with an explicit error; it never substitutes different game bytes.
 
@@ -100,7 +80,8 @@ DNS lives at the domain's DNS host, outside GitHub. It is in place for romstud.i
 
 1. The apex points at GitHub Pages: A records `185.199.108.153`, `185.199.109.153`, `185.199.110.153` and `185.199.111.153`. AAAA records `2606:50c0:8000::153` through `2606:50c0:8003::153` are optional. `www` is a CNAME to `benbruscella.github.io`. No other apex A, AAAA or ALIAS records. See [GitHub's custom-domain guide](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
 2. Recommended: verify the domain for the account (GitHub profile → Settings → Pages → **Add a domain**, then the TXT record `_github-pages-challenge-benbruscella.romstud.io` it shows). This stops other accounts claiming it.
-3. Check: `dig romstud.io +noall +answer` lists the four addresses. The workflow does the rest on the next merge to main.
+3. Check: `dig romstud.io +noall +answer` lists the four addresses.
+4. Set the GitHub Pages custom domain to `romstud.io` (`npm run cli -- deploy-setup --domain romstud.io`, or Settings → Pages), then enable **Enforce HTTPS** once the certificate is issued.
 
 ## Executable studies and ready games
 

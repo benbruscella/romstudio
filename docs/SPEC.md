@@ -146,8 +146,8 @@ The title enables two reviewed NMOS NOP extensions and declares its launch works
 
 The first command is `roms identify <file-or-folder> [--json]`. Recognition reports evidence and hashes without executing input. The main user workflow is identify, dev, build; advanced recovery stays in [CLI.md](CLI.md).
 
-The release library selects system, game, then Play Game, Desk or Learn; `/desk` identifies original media. History URLs support direct load, refresh and Back/Forward. One compact navigation row precedes the game viewport; duplicate branding, huge headings and redundant score panels must not consume laptop/desktop play space. The Pages build supports the `/romstudio/` project base.
+The release library selects system, game, then Play Game, Desk or Learn; `/desk` identifies original media. History URLs support direct load, refresh and Back/Forward. One compact navigation row precedes the game viewport; duplicate branding, huge headings and redundant score panels must not consume laptop/desktop play space. The same build works at a domain root or a project folder such as `/romstudio/`.
 
 All generated outputs belong in `dist/tools/`, `dist/work/` and `dist/site/`. The final directory includes HTML/JS/CSS, verified game modules, learning material and SHA-256-addressed media. Game-specific documentation and recipes live with source in `src/games/<system>/<game>/`. Tests are colocated. See [architecture](ARCHITECTURE.md), [build](BUILD.md) and [contributing](../CONTRIBUTING.md).
 
-The repository is https://github.com/benbruscella/romstudio. v0.1 remains local until the owner reviews and explicitly approves the concrete result; pushing or deploying requires that approval. [Project status](PROJECT-STATUS.md) retains the decisions and outstanding acceptance work.
+The repository is https://github.com/benbruscella/romstudio. [Project status](PROJECT-STATUS.md) retains the decisions and outstanding acceptance work.

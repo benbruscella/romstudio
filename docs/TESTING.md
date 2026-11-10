@@ -61,7 +61,7 @@ These checks must be implemented and added to release acceptance; the existing s
 After all six games and the workbench meet [release acceptance](RELEASES.md), verify the production artifact:
 
 ```sh
-npm run build -- --deploy --domain romstud.io
+npm run build -- --deploy
 npm run cli -- preview --port 4176
 ```
 
