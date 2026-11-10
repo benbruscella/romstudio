@@ -6,3 +6,4 @@ firmware/
 .agents/
 .codex/
 .aws/
+.claude/

@@ -22,6 +22,8 @@ export interface CatalogGame {
   exportId?: string;
   learning: string;
   media: { name: string; sha256: string; bytes: number; asset: string }[];
+  /** Recipe media identities, for ROM Desk's /desk identification. */
+  identities: { name: string; sha256: string }[];
 }
 /** Assemble a static deployment from verified game files and content-addressed
  * source media. Recovery traces and tool/test code never enter this directory. */
@@ -64,7 +66,7 @@ export async function buildSite(
       throw error;
     }
   }
-  const routes = new Set(['']);
+  const routes = new Set(['', 'desk']);
   const files: Record<string, string> = {},
     games: CatalogGame[] = [];
   const put = async (relative: string, bytes: Uint8Array | string): Promise<void> => {
@@ -83,10 +85,12 @@ export async function buildSite(
       status: 'Not built yet',
       learning: `learning/${key}.json`,
       media: [],
+      identities: recipe.media.map((medium) => ({ name: medium.name, sha256: medium.sha256 })),
     };
     const gameRoute = `${recipe.system}/${id}`;
     routes.add(recipe.system);
     routes.add(gameRoute);
+    routes.add(gameRoute + '/desk');
     routes.add(gameRoute + '/learn');
     routes.add(gameRoute + '/learn/code');
     const learning = await gameLearning(key, basePath + gameRoute);
@@ -260,7 +264,7 @@ export async function buildSite(
   );
   await put('style.css', await readFile(join(repositoryRoot, 'src/web/library/style.css')));
   await put('player-embed.css', await readFile(join(repositoryRoot, 'src/web/embed.css')));
-  for (const name of ['app.js', 'router.js', 'code.js']) {
+  for (const name of ['app.js', 'router.js', 'code.js', 'identify.js']) {
     await put(name, await readFile(join(compiled, name)));
   }
   await put(

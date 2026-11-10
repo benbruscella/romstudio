@@ -11,6 +11,7 @@ import { emitVr4300Blocks } from '../../../../transpiler/vr4300-blocks.js';
 import { liftRsp, type RspInstruction } from '../../../../transpiler/rsp.js';
 import { programFiles } from '../../../../transpiler/static.js';
 import { verifyWebImports } from '../../../../build/web-imports.js';
+import { deskModules, deskSymbols } from '../../../../build/web-package.js';
 import { bootSm64 } from './boot.js';
 import { loadSm64Capture, prepareSm64Playback, type Sm64PlaybackOptions } from './playback.js';
 import { assertSourceSnapshot } from '../../../../analysis/source-snapshot.js';
@@ -225,9 +226,14 @@ export async function packageSm64Playback(
       'player',
       // Play tier: high-level Fast3D tasks and the parallel RDP stream.
       'fast3d',
+      'aspmain',
       'rdp-stream',
     ].map((name) => 'systems/n64/' + name),
-    ...['app', 'worker', 'rdp-worker', 'protocol'].map((name) => 'systems/n64/web/' + name),
+    ...['app', 'worker', 'rdp-worker', 'protocol', 'desk'].map((name) => 'systems/n64/web/' + name),
+    // ROM Desk (docs/DESK.md); its C64/NES-only adapter is not needed here.
+    ...deskModules
+      .filter((name) => name !== 'web/desk/mos6502.js')
+      .map((name) => name.slice(0, -3)),
     'games/n64/sm64/web/title',
   ];
   for (const name of modules) {
@@ -244,6 +250,10 @@ export async function packageSm64Playback(
     ),
   );
   await put('style.css', await readFile(join(repositoryRoot, 'src/web/style.css')));
+  const symbols = await deskSymbols('n64/sm64');
+  if (symbols) {
+    await put('desk/symbols.json', symbols);
+  }
   for (const [name, source] of [
     ['README.md', 'README.md'],
     ['STARTUP.md', 'docs/STARTUP.md'],

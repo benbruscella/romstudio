@@ -21,7 +21,7 @@ export class NesPlayer {
   outcome: undefined;
   gap: RecoveryGap | undefined;
   private lastInput = -1;
-  private readonly clock: FrameClock;
+  readonly clock: FrameClock;
   private audio: NesAudio | undefined;
   constructor(
     launch: NesLaunch,
@@ -52,7 +52,32 @@ export class NesPlayer {
     return this.bus.boundary(this.machine);
   }
   advanceFrame(): void {
-    this.clock.advance(this, NES_PAL_FRAME_CYCLES);
+    this.runFrame();
+  }
+  /** ROM Desk: continue the current frame, pausing before the boundary
+   * service or instruction for which `stop` returns true. */
+  runFrame(stop?: (machine: Machine) => boolean): boolean {
+    return this.clock.advance(this, NES_PAL_FRAME_CYCLES, undefined, stop);
+  }
+  /** Side-effect-free CPU read; device registers are not read. */
+  peek(address: number): number | undefined {
+    try {
+      return this.bus.peek(address & 0xffff);
+    } catch {
+      return undefined;
+    }
+  }
+  /** Address-space identity of `address`: RAM, or the PRG bank mapped there. */
+  identity(address: number): string {
+    if (address < 0x2000) {
+      return 'internal RAM';
+    }
+    if (address < 0x8000) {
+      return address >= 0x6000 ? 'cartridge RAM' : 'device registers';
+    }
+    const offset = this.bus.cartridge.prgOffset(address);
+    const hex = offset.toString(16).padStart(5, '0').toUpperCase();
+    return `PRG bank ${Math.floor(offset / 16384)} · ROM offset $${hex}`;
   }
   enableAudio(sampleRate: number): void {
     if (this.audio?.sampleRate === sampleRate) {

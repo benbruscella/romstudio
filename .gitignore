@@ -12,3 +12,4 @@ firmware/
 *.vsf
 .DS_Store
 .playwright-mcp/
+.claude/worktrees/

@@ -19,3 +19,14 @@ test('history routes work at root and GitHub Pages project bases', () => {
   assert.equal(libraryRoute('/romstudio/c64/x/bad/path', '/romstudio/'), undefined);
   assert.equal(libraryRoute('/romstudio/%zz', '/romstudio/'), undefined);
 });
+
+test('ROM Desk routes: per-game Desk and top-level media identification', () => {
+  assert.deepEqual(libraryRoute('/n64/sm64/desk', '/'), {
+    system: 'n64',
+    game: 'sm64',
+    view: 'desk',
+  });
+  assert.deepEqual(libraryRoute('/romstudio/desk', '/romstudio/'), { view: 'identify' });
+  assert.equal(libraryRoute('/n64/sm64/desk/extra', '/'), undefined);
+  assert.equal(libraryRoute('/desk/c64', '/'), undefined);
+});

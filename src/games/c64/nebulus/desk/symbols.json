@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "space": "cpu",
+  "symbols": [
+    {
+      "start": 336,
+      "end": 336,
+      "name": "Packer instruction-skip NOP",
+      "detail": "Undocumented $3C NOP consumes bytes that also encode LDA #$FF when entered at the following address (single instruction site).",
+      "evidence": "docs/BOOT.md",
+      "epoch": "packer"
+    },
+    {
+      "start": 832,
+      "end": 832,
+      "name": "Copied TOWER1 loader",
+      "detail": "Sets drive 8, secondary address 8 and filename TOWER1, then calls $FFD5; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "copied loader"
+    },
+    {
+      "start": 2088,
+      "end": 2088,
+      "name": "Packed stub entry",
+      "detail": "Machine-code entry reached by SYS2088; the loader later jumps back here to run the second unpacker; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "boot PRG TOWER TOPPLER+"
+    },
+    {
+      "start": 26658,
+      "end": 26664,
+      "name": "Picture joystick fire check",
+      "detail": "Calls $6855 and compares the masked joystick bits; joystick fire leaves the release picture.",
+      "evidence": "code/startup.ts",
+      "epoch": "release picture"
+    },
+    {
+      "start": 26892,
+      "end": 26918,
+      "name": "Trainer relocation XOR copy",
+      "detail": "XORs six pages with $08 while copying $6927–$6F26 to $C900–$CEFF, then jumps to $CAD9.",
+      "evidence": "code/startup.ts",
+      "epoch": "unpacked release payload"
+    },
+    {
+      "start": 32768,
+      "end": 32772,
+      "name": "Game entry",
+      "detail": "Game entry reached from the second unpacker after TOWER1 loads (LDA #$01, JMP $8017).",
+      "evidence": "recovery/boot.ts",
+      "epoch": "TOWER1 loaded"
+    },
+    {
+      "start": 32841,
+      "end": 32841,
+      "name": "Menu call",
+      "detail": "Menu call that leaves return address $804B on the live stack (single instruction site).",
+      "evidence": "player.ts"
+    },
+    {
+      "start": 32939,
+      "end": 32939,
+      "name": "First-tower loop",
+      "detail": "First-tower game loop used as the logic boundary; entry point.",
+      "evidence": "docs/GAMEPLAY.md"
+    },
+    {
+      "start": 35279,
+      "end": 35279,
+      "name": "Menu routine",
+      "detail": "Original menu routine whose entry marks the title as waiting to start; entry point.",
+      "evidence": "player.ts"
+    },
+    {
+      "start": 37408,
+      "end": 37408,
+      "name": "Vertical routine",
+      "detail": "Vertical routine selected by Up at the next doorway/lift through mutable call operands; entry point.",
+      "evidence": "recovery/game.ts"
+    },
+    {
+      "start": 43921,
+      "end": 43921,
+      "name": "Joystick reader",
+      "detail": "Writes the CIA port, reads both ports and derives the direction/fire fields at $24–$26; entry point.",
+      "evidence": "docs/BOOT.md"
+    },
+    {
+      "start": 51944,
+      "end": 51946,
+      "name": "Clear-screen CHROUT call",
+      "detail": "JSR $FFD2 with the clear control, serviced by the existing screen-clear implementation.",
+      "evidence": "code/startup.ts",
+      "epoch": "release intro"
+    },
+    {
+      "start": 52704,
+      "end": 52710,
+      "name": "Intro Space wait",
+      "detail": "Calls GETIN and loops until it returns Space ($20) to leave the release intro.",
+      "evidence": "code/startup.ts",
+      "epoch": "release intro"
+    },
+    {
+      "start": 61440,
+      "end": 61440,
+      "name": "Sound driver",
+      "detail": "Start of the original sound driver; entry point.",
+      "evidence": "docs/GAMEPLAY.md"
+    },
+    {
+      "start": 62225,
+      "end": 62225,
+      "name": "Jump-sound driver branch",
+      "detail": "Sound-driver branch reached when fire follows walking (the jump sound).",
+      "evidence": "recovery/game.ts"
+    },
+    {
+      "start": 65490,
+      "end": 65490,
+      "name": "KERNAL CHROUT",
+      "detail": "KERNAL character output; the observed clear control enters the screen-clear service; entry point.",
+      "evidence": "code/startup.ts"
+    },
+    {
+      "start": 65493,
+      "end": 65493,
+      "name": "KERNAL LOAD",
+      "detail": "KERNAL LOAD called by the copied loader and resolved by the shared disk LOAD service; entry point.",
+      "evidence": "docs/BOOT.md"
+    }
+  ]
+}

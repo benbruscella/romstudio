@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "space": "cpu",
+  "symbols": [
+    {
+      "start": 2149849088,
+      "end": 2149849143,
+      "name": "Entry: clear BSS, start main",
+      "detail": "Fourteen entry words that clear BSS at $80307E50 (length $2F0C0), set the idle-thread stack $801FBA00 and jump to main.",
+      "evidence": "code/startup.ts"
+    },
+    {
+      "start": 2149854848,
+      "end": 2149854848,
+      "name": "Main function",
+      "detail": "Main function reached from the entry code; entry point.",
+      "evidence": "docs/STARTUP.md"
+    }
+  ]
+}

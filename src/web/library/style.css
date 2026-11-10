@@ -558,3 +558,28 @@ body.playing > header {
     max-height: 220px;
   }
 }
+
+/* ROM Desk media identification (/desk). */
+.identify {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+  max-width: 900px;
+}
+.identify input[type='file'] {
+  display: block;
+  margin-top: 8px;
+  max-width: 100%;
+}
+.identify-results {
+  margin: 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+.identify-results li {
+  margin: 6px 0;
+}
+.identify details li {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}

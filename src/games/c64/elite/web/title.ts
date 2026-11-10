@@ -74,6 +74,7 @@ export const title: BrowserTitle = {
       },
       display: player.display,
       advanceFrame: () => player.advanceFrame(),
+      desk: player,
       enableAudio: (rate) => player.enableAudio(rate),
       takeAudio: () => player.takeAudio(),
       stats: () => ({}),

@@ -1,5 +1,6 @@
 import type { Machine } from '../runtime/mos6502.js';
 import type { BrowserControls } from '../runtime/controls.js';
+import type { Mos6502DeskHost } from './desk/mos6502.js';
 export interface ShellResult {
   won: boolean;
   title: string;
@@ -11,6 +12,8 @@ export interface ShellPlayer {
   readonly result: ShellResult | undefined;
   readonly display: { pixels: Uint8Array };
   readonly startPrompt?: string | undefined;
+  /** The underlying player, for ROM Desk. */
+  readonly desk?: Mos6502DeskHost;
   advanceFrame(): void;
   enableAudio(sampleRate: number): void;
   takeAudio(): Float32Array;

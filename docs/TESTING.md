@@ -45,7 +45,7 @@ Where a game has a separate [play tier](ARCHITECTURE.md#execution-tiers), curren
 
 ## Workbench — required for v0.1
 
-The core debugger is not implemented yet. For every game in [the release scope](RELEASES.md), acceptance must include:
+[ROM Desk](DESK.md) is implemented. `src/web/desk/stepping.integration.test.ts` runs each built package both ways (C64/NES: 150 frames stepped one frame-clock operation at a time; SM64: two FullSyncs tick by tick) and compares registers, cycles and memory with ordinary execution. For every game in [the release scope](RELEASES.md), the browser review covers:
 
 - Load the supported original media and verify identity; mismatched versions remain identifiable rather than executing as a different build.
 - Run, pause, restart and step actual instructions/frames on the reference tier; compare stepped and ordinary execution at the same boundary. Identify N64 CPU/RSP separately.

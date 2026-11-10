@@ -53,6 +53,7 @@ export const nebulus: BrowserTitle = {
         return undefined;
       },
       advanceFrame: () => player.advanceFrame(),
+      desk: player,
       get startPrompt() {
         return player.waitingToStart ? 'Press Space to start' : undefined;
       },

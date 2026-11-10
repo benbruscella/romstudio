@@ -527,3 +527,222 @@ footer a {
 [hidden] {
   display: none !important;
 }
+
+/* ROM Desk (docs/DESK.md) */
+.desk {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.desk[hidden] {
+  display: none;
+}
+.desk-header,
+.desk-controls,
+.desk-status,
+.desk-processors,
+.desk-counters {
+  grid-column: 1 / -1;
+}
+.desk-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+.desk-header h2 {
+  margin: 0;
+}
+.desk-tier,
+.desk-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.desk-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.desk-controls button,
+.desk-inline button,
+.desk-inline input,
+.desk-inline select {
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+}
+.desk-controls[aria-busy='true'] button:not(:last-child) {
+  opacity: 0.6;
+}
+.desk-status {
+  margin: 0;
+  min-height: 1.4em;
+  color: var(--green);
+}
+.desk-processors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 12px;
+}
+.desk-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.desk-card h3,
+.desk-card h4 {
+  margin: 0 0 8px;
+}
+.desk-card h4 {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.desk-location,
+.desk-symbol {
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+.desk pre {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--black);
+  font:
+    12px/1.45 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  white-space: pre;
+}
+.desk-registers,
+.desk-counters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 4.5em minmax(18ch, 1fr));
+  gap: 2px 8px;
+  margin: 10px 0 0;
+  font:
+    12px/1.6 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.desk-registers dt,
+.desk-counters dt {
+  color: var(--muted);
+}
+.desk-registers dd,
+.desk-counters dd {
+  margin: 0;
+}
+.desk-counters {
+  grid-template-columns: repeat(auto-fill, minmax(10em, max-content) minmax(10ch, 1fr));
+}
+.desk-flags {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 0;
+}
+.desk-flags span {
+  min-width: 2em;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+}
+.desk-flags span.set {
+  background: var(--green);
+  color: var(--black);
+}
+.desk-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.desk-inline input {
+  flex: 1 1 10em;
+  min-width: 0;
+}
+.desk-breakpoints {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.desk-breakpoints li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+.desk-breakpoints button {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+}
+.desk-memory {
+  grid-column: span 2;
+}
+@media (max-width: 760px) {
+  .desk-memory {
+    grid-column: auto;
+  }
+}
+.desk-diagram {
+  margin: 8px 0 0;
+}
+.desk-diagram svg {
+  width: 100%;
+  height: auto;
+}
+.desk-diagram rect {
+  fill: var(--black);
+  stroke: var(--line);
+  stroke-width: 2;
+}
+.desk-diagram .cpu rect {
+  stroke: var(--green);
+}
+.desk-diagram text {
+  fill: var(--ink);
+  font-size: 15px;
+  font-family: inherit;
+}
+.desk-diagram text.detail {
+  fill: var(--muted);
+  font-size: 12px;
+}
+.desk-diagram .link {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+.desk-diagram figcaption {
+  color: var(--muted);
+  font-size: 13px;
+}
+.desk-links {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.desk-toggle {
+  width: 100%;
+  margin-top: 8px;
+}

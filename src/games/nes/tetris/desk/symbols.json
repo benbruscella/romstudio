@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "space": "cpu",
+  "symbols": [
+    {
+      "start": 43907,
+      "end": 43907,
+      "name": "Controller reader",
+      "detail": "Strobes $4016, then reads eight bits from both controllers; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 43959,
+      "end": 43959,
+      "name": "Read controllers twice",
+      "detail": "Invokes the $AB83 controller reader twice; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 43979,
+      "end": 44007,
+      "name": "Two-sample button filter",
+      "detail": "Keeps only buttons present in both samples and reports newly pressed buttons separately from those still held.",
+      "evidence": "code/controller.ts"
+    },
+    {
+      "start": 44221,
+      "end": 44221,
+      "name": "MMC1 serial write ($ACBD)",
+      "detail": "One of four routines that send five serial bits to MMC1 register regions, configuring mirroring and program/graphics bank selection; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 44241,
+      "end": 44241,
+      "name": "MMC1 serial write ($ACD1)",
+      "detail": "One of four routines that send five serial bits to MMC1 register regions, configuring mirroring and program/graphics bank selection; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 44261,
+      "end": 44261,
+      "name": "MMC1 serial write ($ACE5)",
+      "detail": "One of four routines that send five serial bits to MMC1 register regions, configuring mirroring and program/graphics bank selection; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 44281,
+      "end": 44281,
+      "name": "MMC1 serial write ($ACF9)",
+      "detail": "One of four routines that send five serial bits to MMC1 register regions, configuring mirroring and program/graphics bank selection; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 57447,
+      "end": 57455,
+      "name": "Indirect four-byte copy",
+      "detail": "Copies four bytes through two indirect pointers; on the checked route the destination is the pulse 1 register block.",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 57880,
+      "end": 57880,
+      "name": "Frame sequencer setup",
+      "detail": "Writes $C0 to $4017: five-step frame sequencing with the frame interrupt inhibited (single instruction site).",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 57971,
+      "end": 57987,
+      "name": "APU register initialization",
+      "detail": "Initializes the DMC DAC, pulse/noise envelope registers and triangle linear-counter register.",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 59336,
+      "end": 59336,
+      "name": "Pulse volume/envelope update",
+      "detail": "Updates pulse volume/envelope through an indexed store during the observed music/effects sequence (single instruction site).",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 59790,
+      "end": 59808,
+      "name": "Indexed channel register writer",
+      "detail": "Writes $4000,Y through $4003,Y at $E98E, $E994, $E99A and $E9A0; Y selects pulse 1, pulse 2 or triangle.",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 59891,
+      "end": 59903,
+      "name": "Noise register writes",
+      "detail": "Writes noise envelope, period and length/restart at $E9F3, $E9F9 and $E9FF.",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 65280,
+      "end": 65280,
+      "name": "Reset handler",
+      "detail": "Reset vector target: clears decimal mode, disables IRQ handling and PPU output, waits through two PPUSTATUS polls and initializes the stack; entry point.",
+      "evidence": "docs/STARTUP.md"
+    }
+  ]
+}

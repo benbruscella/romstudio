@@ -1,6 +1,9 @@
 import { BrowserAudio } from '../../../web/audio.js';
 import { browserKey } from '../../../web/keyboard.js';
+import { deskView } from '../../../web/desk/view.js';
+import type { DeskRun, DeskState, DeskStepKind, DeskTarget } from '../../../web/desk/types.js';
 import type {
+  N64DeskRequest,
   N64ExecutionTier,
   N64WorkerRequest,
   N64WorkerReply,
@@ -35,6 +38,76 @@ let worker: Worker | undefined,
 function post(message: N64WorkerRequest): void {
   worker?.postMessage(message);
 }
+
+// ROM Desk: every call is answered by the machine worker (docs/DESK.md).
+let deskActive = false,
+  deskId = 0;
+const deskPending = new Map<
+  number,
+  { resolve(value: unknown): void; reject(error: Error): void }
+>();
+function deskCall<T>(request: N64DeskRequest): Promise<T> {
+  const id = ++deskId;
+  return new Promise<T>((resolve, reject) => {
+    deskPending.set(id, { resolve: resolve as (value: unknown) => void, reject });
+    post({ type: 'desk', id, request });
+  });
+}
+const deskTarget: DeskTarget = {
+  system: 'n64',
+  steps: [
+    {
+      kind: 'cpu',
+      label: 'Step CPU',
+      title: 'Run machine ticks until the VR4300 retires one instruction',
+    },
+    {
+      kind: 'rsp',
+      label: 'Step RSP',
+      title: 'Run machine ticks until the RSP retires one instruction',
+    },
+    { kind: 'frame', label: 'Frame', title: 'Run to the next VI FullSync' },
+  ],
+  memory: [
+    { id: 'rdram', label: 'RDRAM (KSEG0 addresses)', start: 0x80000000, size: 0x400000 },
+    { id: 'dmem', label: 'RSP DMEM', start: 0, size: 0x1000 },
+    { id: 'imem', label: 'RSP IMEM', start: 0, size: 0x1000 },
+  ],
+  open() {
+    deskActive = true;
+    running = false;
+    held.clear();
+    audio.stop();
+    pause.textContent = 'Resume';
+    pause.disabled = true;
+    status.textContent = 'ROM Desk';
+    status.dataset.state = 'desk';
+    return deskCall<DeskState>({ op: 'open' });
+  },
+  async close() {
+    await deskCall({ op: 'close' });
+    deskActive = false;
+    started = running = true;
+    pause.textContent = 'Pause';
+    pause.disabled = false;
+    status.textContent = 'Playing';
+    status.dataset.state = 'playing';
+    startSound();
+  },
+  state: () => deskCall({ op: 'state' }),
+  step: (kind: DeskStepKind) => deskCall({ op: 'step', kind }),
+  run: (request: DeskRun) => deskCall({ op: 'run', ...request }),
+  interrupt: () => post({ type: 'desk', id: 0, request: { op: 'interrupt' } }),
+  read: (space: string, address: number, length: number) =>
+    deskCall({ op: 'read', space, address, length }),
+  restart: () => deskCall({ op: 'restart' }),
+};
+const desk = deskView({
+  button: get<HTMLButtonElement>('desk-toggle'),
+  section: get('desk'),
+  symbolsUrl: new URL('../../../desk/symbols.json', import.meta.url).href,
+  target: () => deskTarget,
+});
 function startSound(): void {
   if (!sound || !running) {
     return;
@@ -163,6 +236,9 @@ function suspend(): void {
   status.textContent = 'Paused';
 }
 pause.addEventListener('click', () => {
+  if (deskActive) {
+    return;
+  }
   if (running) {
     suspend();
   } else {
@@ -320,13 +396,34 @@ async function start(): Promise<void> {
       failure(message.detail);
       return;
     }
+    if (message.type === 'desk') {
+      if (message.pixels) {
+        draw(message.pixels);
+      }
+      const pending = deskPending.get(message.id);
+      deskPending.delete(message.id);
+      if (message.error) {
+        pending?.reject(new Error(message.error));
+      } else {
+        pending?.resolve(message.value);
+      }
+      return;
+    }
     if (message.type === 'ready') {
+      const first = !ready && !started;
       ready = true;
       draw(message.pixels);
       play.disabled = false;
       const automatic = !restart;
       restart = false;
-      begin(automatic);
+      // A direct Desk link stays paused at the launch checkpoint; a Desk
+      // restart stays paused too.
+      if (!deskActive && !(first && desk.wanted)) {
+        begin(automatic);
+      }
+      if (first) {
+        desk.ready();
+      }
     } else {
       if (message.pixels) {
         draw(message.pixels);

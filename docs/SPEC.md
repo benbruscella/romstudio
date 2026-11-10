@@ -18,7 +18,7 @@ The inspiration is [vermiceli/nes-contra-us](https://github.com/vermiceli/nes-co
 
 ## Intended user workflow
 
-Identification, curated game recipes and bounded static exports exist today. The ROM Desk workbench, including loading supported media, is required for v0.1 and remains unfinished. Automatic complete recovery of arbitrary binaries is a longer-term goal. [RELEASES.md](RELEASES.md) is the committed scope and decision record.
+Identification, curated game recipes and bounded static exports exist today. The ROM Desk workbench, including identifying supported media, is required for v0.1 and is implemented ([DESK.md](DESK.md)). Automatic complete recovery of arbitrary binaries is a longer-term goal. [RELEASES.md](RELEASES.md) is the committed scope and decision record.
 
 1. Import one or more related media images. ROM Studio fingerprints them and proposes a system and format. The operator can override detection, order disks, identify the boot medium and provide firmware when required.
 2. Analyse the title. ROM Studio extracts files and banks, disassembles reachable code, records address and media provenance, and captures execution where static analysis leaves gaps.
@@ -146,7 +146,7 @@ The title enables two reviewed NMOS NOP extensions and declares its launch works
 
 The first command is `roms identify <file-or-folder> [--json]`. Recognition reports evidence and hashes without executing input. The main user workflow is identify, dev, build; advanced recovery stays in [CLI.md](CLI.md).
 
-The release library selects system, game, then Play Game, Learn or Desk; Desk remains to be implemented. History URLs support direct load, refresh and Back/Forward. One compact navigation row precedes the game viewport; duplicate branding, huge headings and redundant score panels must not consume laptop/desktop play space. The Pages build supports the `/romstudio/` project base.
+The release library selects system, game, then Play Game, Desk or Learn; `/desk` identifies original media. History URLs support direct load, refresh and Back/Forward. One compact navigation row precedes the game viewport; duplicate branding, huge headings and redundant score panels must not consume laptop/desktop play space. The Pages build supports the `/romstudio/` project base.
 
 All generated outputs belong in `dist/tools/`, `dist/work/` and `dist/site/`. The final directory includes HTML/JS/CSS, verified game modules, learning material and SHA-256-addressed media. Game-specific documentation and recipes live with source in `src/games/<system>/<game>/`. Tests are colocated. See [architecture](ARCHITECTURE.md), [build](BUILD.md) and [contributing](../CONTRIBUTING.md).
 

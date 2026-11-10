@@ -13,19 +13,34 @@ interface ExecutionHost<Result> {
   gap: RecoveryGap | undefined;
 }
 /** Shared pacing of already-translated instructions. Hardware supplies the
- * boundary services and cycle count; this layer knows no registers or games. */
+ * boundary services and cycle count; this layer knows no registers or games.
+ *
+ * ROM Desk may stop inside a frame (`stop` is asked before every boundary
+ * service or instruction). The frame then stays open, with its deadline and
+ * service budget, and the next call continues it. Stepping therefore runs
+ * exactly the operations an uninterrupted frame would. */
 export class FrameClock {
+  /** Completed frames. */
+  frames = 0;
+  private open = false;
+  private operations = 0;
   constructor(private deadline: number) {}
+  /** Returns true when the frame completed (or execution already ended),
+   * false when `stop` paused it. */
   advance<Result>(
     host: ExecutionHost<Result>,
     cycles: number,
     result?: () => Result | undefined,
-  ): void {
+    stop?: (machine: Machine) => boolean,
+  ): boolean {
     if (host.outcome || host.gap) {
-      return;
+      return true;
     }
-    this.deadline += cycles;
-    let operations = 0;
+    if (!this.open) {
+      this.deadline += cycles;
+      this.operations = 0;
+      this.open = true;
+    }
     try {
       while (host.machine.cycles < this.deadline) {
         const outcome = result?.();
@@ -33,7 +48,10 @@ export class FrameClock {
           host.outcome = outcome;
           break;
         }
-        if (++operations > 20000) {
+        if (stop?.(host.machine)) {
+          return false;
+        }
+        if (++this.operations > 20000) {
           host.machine.gap('frame-budget', 'Frame instruction/service budget exhausted.');
         }
         if (!host.boundary()) {
@@ -51,5 +69,8 @@ export class FrameClock {
         detail: error.message,
       };
     }
+    this.open = false;
+    this.frames++;
+    return true;
   }
 }

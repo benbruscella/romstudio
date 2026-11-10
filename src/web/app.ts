@@ -4,6 +4,8 @@ import { BrowserAudio } from './audio.js';
 import type { BrowserControls } from '../runtime/controls.js';
 import type { BrowserTitle, ShellPlayer, TitleAction } from './shell-types.js';
 import type { Machine } from '../runtime/mos6502.js';
+import { deskView } from './desk/view.js';
+import { mos6502Desk } from './desk/mos6502.js';
 
 const get = <T extends HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -207,6 +209,60 @@ function updateStats(): void {
     status.textContent = player.startPrompt ?? 'Playing';
   }
 }
+function drawScreen(): void {
+  if (!player) {
+    return;
+  }
+  context!.putImageData(
+    new ImageData(
+      Uint8ClampedArray.from(player.display.pixels),
+      title.display.width,
+      title.display.height,
+    ),
+    0,
+    0,
+  );
+}
+// ROM Desk pauses the frame loop and drives the same player directly.
+let deskActive = false;
+const desk = deskView({
+  button: get<HTMLButtonElement>('desk-toggle'),
+  section: get('desk'),
+  symbolsUrl: './desk/symbols.json',
+  target: () =>
+    mos6502Desk({
+      system: (document.body.dataset.system as 'c64' | 'nes') ?? 'c64',
+      host: () => player?.desk,
+      pause: () => {
+        deskActive = true;
+        running = false;
+        held.clear();
+        audio.stop();
+        pause.textContent = 'Resume';
+        pause.disabled = true;
+        status.textContent = 'ROM Desk';
+        status.dataset.state = 'desk';
+      },
+      resume: () => {
+        deskActive = false;
+        running = !player?.gap && !player?.result;
+        lastTime = 0;
+        accumulated = 0;
+        pause.textContent = 'Pause';
+        pause.disabled = false;
+        status.textContent = demo ? 'Playing example' : 'Playing';
+        status.dataset.state = 'playing';
+        if (running) {
+          startSound();
+        }
+      },
+      restart: () => reset(demo, true),
+      picture: () => {
+        drawScreen();
+        updateStats();
+      },
+    }),
+});
 function animate(time: number): void {
   if (player && running && !document.hidden) {
     if (lastTime) {
@@ -226,15 +282,7 @@ function animate(time: number): void {
       }
     }
     accumulated = Math.min(accumulated, 0.2);
-    context!.putImageData(
-      new ImageData(
-        Uint8ClampedArray.from(player.display.pixels),
-        title.display.width,
-        title.display.height,
-      ),
-      0,
-      0,
-    );
+    drawScreen();
     updateStats();
   } else {
     lastTime = 0;
@@ -306,6 +354,9 @@ function configureTitle(): void {
 play.addEventListener('click', () => reset(false));
 example.addEventListener('click', () => reset(true));
 pause.addEventListener('click', () => {
+  if (deskActive) {
+    return;
+  }
   audio.stop();
   running = !running;
   held.clear();
@@ -487,6 +538,7 @@ async function start(): Promise<void> {
         : manifest.system === 'nes'
           ? 'NINTENDO ENTERTAINMENT SYSTEM'
           : manifest.system.toUpperCase();
+    document.body.dataset.system = manifest.system;
     configureTitle();
     checkpoint = data;
     reference = log;
@@ -499,6 +551,7 @@ async function start(): Promise<void> {
     // Run the original startup/title immediately. User input still goes through
     // the game; only browser audio waits for an interaction.
     reset(false, true);
+    desk.ready();
   } catch (error) {
     status.textContent = 'Unable to load';
     console.error(error);

@@ -2,6 +2,7 @@ import type { CatalogGame } from '../../build/site.js';
 import type { LearningMaterial } from '../../build/learn.js';
 import { codeExplorer } from './code.js';
 import { historyRouter, libraryRoute } from './router.js';
+import { identifyMedia, sha256Hex, type KnownMedia } from './identify.js';
 
 interface System {
   id: string;
@@ -48,6 +49,8 @@ const chapterResize = new ResizeObserver(() => {
 });
 chapterResize.observe(items);
 let revision = 0;
+// Play and Desk share one game frame, so switching keeps the running game.
+let liveFrame: { key: string; view: HTMLElement; frame: HTMLIFrameElement } | undefined;
 try {
   const redirect = new URLSearchParams(location.search).get('route');
   if (redirect) {
@@ -149,6 +152,84 @@ try {
     requestAnimationFrame(showCurrentChapter);
   }
 
+  function identifyPage(): void {
+    heading.textContent = 'Identify original media';
+    eyebrow.textContent = 'ROM DESK';
+    description.textContent =
+      'Choose original files. They are hashed with SHA-256 in this browser and never uploaded. An exact match opens that game in ROM Desk; other files are never run.';
+    document.title = 'ROM Desk · ROM Studio';
+    crumbs.append(link('All systems', ''));
+    const known: KnownMedia[] = catalog.games.flatMap((game) =>
+      (game.identities ?? []).map((identity) => ({
+        game: game.id,
+        system: game.system,
+        name: identity.name,
+        title: game.name,
+        sha256: identity.sha256,
+      })),
+    );
+    const panel = element('section');
+    panel.className = 'identify';
+    const label = element('label', 'Original media files ');
+    const input = element('input');
+    input.type = 'file';
+    input.multiple = true;
+    label.append(input);
+    const results = element('ul');
+    results.className = 'identify-results';
+    results.setAttribute('aria-live', 'polite');
+    input.addEventListener('change', async () => {
+      results.replaceChildren();
+      for (const file of Array.from(input.files ?? [])) {
+        const item = element('li');
+        results.append(item);
+        if (file.size > 67108864) {
+          item.textContent = `${file.name}: larger than any supported medium; not read.`;
+          continue;
+        }
+        item.textContent = `${file.name}: hashing…`;
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const result = identifyMedia(file.name, bytes, await sha256Hex(bytes), known);
+        item.replaceChildren();
+        item.append(
+          element('strong', file.name),
+          ` · ${result.format} · SHA-256 ${result.sha256.slice(0, 16)}… `,
+        );
+        if (result.kind === 'exact') {
+          const game = catalog.games.find(
+            (entry) => entry.id === result.match!.game && entry.system === result.match!.system,
+          )!;
+          item.append(`Matches ${game.name} (${result.match!.name}). `);
+          item.append(
+            game.runnable
+              ? link('Open in ROM Desk', `${game.system}/${game.id}/desk`)
+              : link('Learn', `${game.system}/${game.id}/learn`),
+          );
+        } else if (result.kind === 'other-release') {
+          const supported = known
+            .filter((entry) => entry.game === result.game!.id)
+            .map((entry) => entry.name);
+          item.append(
+            `This looks like ${result.game!.title}${result.hint ? ` (“${result.hint}”)` : ''}, but it is not the supported release. Supported: ${supported.join(', ')}. It will not be run.`,
+          );
+        } else {
+          item.append(
+            'Not a supported game. Unknown binaries are never run: each game needs a checked study.',
+          );
+        }
+      }
+    });
+    const supported = element('details');
+    supported.append(element('summary', 'Supported media'));
+    const list = element('ul');
+    for (const entry of known) {
+      list.append(element('li', `${entry.title}: ${entry.name} · ${entry.sha256}`));
+    }
+    supported.append(list);
+    panel.append(label, results, supported);
+    items.append(panel);
+  }
+
   function render(): void {
     const version = ++revision,
       route = libraryRoute(location.pathname, base);
@@ -156,11 +237,28 @@ try {
     const game = catalog.games.find(
       (item) => item.system === system?.id && item.id === route?.game,
     );
-    const playing = !!game && route?.view === 'play' && game.runnable;
+    const playing = !!game && (route?.view === 'play' || route?.view === 'desk') && game.runnable;
+    const desk = playing && route?.view === 'desk';
+    const key = game ? `${game.system}/${game.id}` : '';
     document.body.classList.toggle('playing', playing);
+    document.body.classList.toggle('desk', desk);
     document.body.classList.toggle('learning', !!game && !playing);
-    items.replaceChildren();
+    if (playing && liveFrame?.key === key) {
+      // Keep the frame attached: moving or re-adding an iframe reloads it.
+      for (const child of Array.from(items.children)) {
+        if (child !== liveFrame.view) {
+          child.remove();
+        }
+      }
+    } else {
+      items.replaceChildren();
+      liveFrame = undefined;
+    }
     crumbs.replaceChildren();
+    if (route?.view === 'identify') {
+      identifyPage();
+      return;
+    }
     if (!route || (route.system && !system) || (route.game && !game)) {
       heading.textContent = 'Page not found.';
       eyebrow.textContent = 'ROM STUDIO';
@@ -178,7 +276,10 @@ try {
       const tabs = element('span');
       tabs.className = 'view-tabs';
       if (game.runnable) {
-        tabs.append(link(playLabel(game), `${system!.id}/${game.id}`, playing ? 'active' : ''));
+        tabs.append(
+          link(playLabel(game), `${system!.id}/${game.id}`, playing && !desk ? 'active' : ''),
+        );
+        tabs.append(link('Desk', `${system!.id}/${game.id}/desk`, desk ? 'active' : ''));
       }
       tabs.append(link('Learn', `${system!.id}/${game.id}/learn`, playing ? '' : 'active'));
       crumbs.append(element('span', game.name), tabs);
@@ -190,7 +291,13 @@ try {
       }
     }
     heading.textContent = game?.name ?? system?.name ?? 'Choose your system.';
-    eyebrow.textContent = game ? 'LEARN THE GAME' : system ? 'CHOOSE A GAME' : 'THE LIBRARY';
+    eyebrow.textContent = desk
+      ? 'ROM DESK'
+      : game
+        ? 'LEARN THE GAME'
+        : system
+          ? 'CHOOSE A GAME'
+          : 'THE LIBRARY';
     description.textContent = game
       ? 'Original instructions, recovered explanations, and the evidence connecting them.'
       : system
@@ -206,9 +313,17 @@ try {
         });
         return;
       }
+      if (liveFrame?.key === key) {
+        liveFrame.frame.contentWindow?.postMessage(
+          { type: 'rom-studio-view', view: desk ? 'desk' : 'play' },
+          location.origin,
+        );
+        return;
+      }
       const view = element('div');
       view.className = 'game-view';
       const frame = element('iframe');
+      liveFrame = { key, view, frame };
       frame.addEventListener('load', () => {
         const doc = frame.contentDocument;
         if (!doc?.body) {
@@ -225,7 +340,7 @@ try {
         css.href = new URL(url('player-embed.css'), location.origin).href;
         doc.head.append(css);
       });
-      frame.src = url(game.entry!) + '?embed=1';
+      frame.src = url(game.entry!) + (desk ? '?embed=1&desk=1' : '?embed=1');
       frame.title = game.name;
       frame.allow = 'autoplay; fullscreen; gamepad';
       frame.allowFullscreen = true;
@@ -255,6 +370,21 @@ try {
         card.append(art, body);
         items.append(card);
       }
+      const deskCard = link('', 'desk', 'card desk-card-link');
+      const deskBody = element('div');
+      deskBody.className = 'card-body';
+      const deskMeta = element('span', 'ROM DESK');
+      deskMeta.className = 'meta';
+      const deskGo = element('span', 'Identify media ↗');
+      deskGo.className = 'go';
+      deskBody.append(
+        deskMeta,
+        element('h2', 'Have the original?'),
+        element('p', 'Identify a cartridge or disk by its hash and open it in ROM Desk.'),
+        deskGo,
+      );
+      deskCard.append(deskBody);
+      items.append(deskCard);
       return;
     }
     for (const game of catalog.games.filter((game) => game.system === system.id)) {
@@ -288,6 +418,21 @@ try {
       items.append(card);
     }
   }
+  // The game page's own Desk button asks the library to change the route.
+  window.addEventListener('message', (event) => {
+    const data = event.data as { type?: string; view?: string };
+    if (
+      event.origin !== location.origin ||
+      !liveFrame ||
+      event.source !== liveFrame.frame.contentWindow ||
+      data?.type !== 'rom-studio-navigate' ||
+      (data.view !== 'desk' && data.view !== 'play')
+    ) {
+      return;
+    }
+    history.pushState(null, '', url(liveFrame.key + (data.view === 'desk' ? '/desk' : '')));
+    render();
+  });
   historyRouter(base, render);
 } catch (error) {
   heading.textContent = 'The library could not load.';
@@ -314,7 +459,7 @@ const gameKeys = new Set([
 ]);
 for (const type of ['keydown', 'keyup'] as const) {
   document.addEventListener(type, (event) => {
-    if (!document.body.classList.contains('playing')) {
+    if (!document.body.classList.contains('playing') || document.body.classList.contains('desk')) {
       return;
     }
     const gameFrame = document.querySelector('iframe');

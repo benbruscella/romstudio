@@ -65,7 +65,7 @@ The workbench is part of the release, not an optional future add-on. Its core mu
 - Show basic system diagrams connecting CPU, memory, video, sound and input to the modeled devices. Label teaching diagrams distinctly from attributed original electrical schematics.
 - Connect Play, Learn and Desk through compact, accessible browser navigation and direct history URLs. Keep controls usable on desktop, laptop and narrow screens.
 
-This is acceptance scope, not a claim that the debugger is implemented. Existing source views and checkpoints provide foundations. Debug commands must act on the real system adapter and the reference tier's static game functions; a browser decoder or dynamic compiler is not introduced to make unsupported code appear to work. Desk may run below full speed.
+Debug commands must act on the real system adapter and the reference tier's static game functions; a browser decoder or dynamic compiler is not introduced to make unsupported code appear to work. Desk may run below full speed. **Implemented on 10 November 2026** as described in [ROM Desk](DESK.md). Its stepping-agreement tests pass for all six games: instruction stepping reaches the same registers, cycles and memory as ordinary frames. Owner review of the workbench is still required.
 
 Advanced rewind/time travel, pixel-to-instruction archaeology, semantic breakpoints, editors, community remix galleries and multiplayer remain [Blue sky](BLUESKY.md) ideas unless separately promoted into a release.
 
@@ -75,7 +75,7 @@ Release acceptance includes checks/tests on the actual candidate, original/stati
 
 ### Six games accepted as working — 9 November 2026
 
-The owner, having played them, accepted all six games as working: Lemmings, Nebulus, Elite, Super Mario Bros., Tetris and Super Mario 64. Their packages are now `release-ready` and the library offers **Play Game**. Each game's documented limits still apply and remain in its README and status entry; for SM64 these include the title screen below 25 fps and unaccepted saves and progression. `build --deploy` still also requires verification passed for the current sources. The ROM Desk workbench remains required for v0.1.
+The owner, having played them, accepted all six games as working: Lemmings, Nebulus, Elite, Super Mario Bros., Tetris and Super Mario 64. Their packages are now `release-ready` and the library offers **Play Game**. Each game's documented limits still apply and remain in its README and status entry; for SM64 these include unaccepted saves and progression, and a title screen that averages 24.0 fps rather than a steady 25 since the audio implementation (10 November). `build --deploy` still also requires verification passed for the current sources. The ROM Desk workbench, also required for v0.1, was implemented on 10 November ([DESK.md](DESK.md)).
 
 ### Build, test and deploy — decided 9 November 2026
 
@@ -89,7 +89,7 @@ The owner separated building from testing. **Build packages; tests verify; deplo
 
 A recovery capture is reused until the media, recipe or recovery scenario changes; it is input for packaging, never evidence that changed code passed. `dist/` stays disposable: a build creates any missing capture or package, and only verification runs the comparisons. SM64 keeps its captures in git-ignored `.cache/`. The C64 and NES builders recover without the comparison during `build` (`verify: false`, recorded as `not-run`) and reuse an existing package. CI starts from nothing, so the deploy build verifies every game itself; the integration tests check recovery in temporary folders and do not leave packages behind. The scripts were reduced to `dev`, `build`, `test`, `check`, `fix` and `cli`.
 
-The strict deploy build enforces game readiness. Workbench implementation, acceptance checks and its release gate still need to be completed; passing the present game gate alone will not satisfy the expanded release scope. See [Testing](TESTING.md).
+The strict deploy build enforces game readiness and verification. ROM Desk ships in every game package; its stepping-agreement checks run with the integration tests (`src/web/desk/stepping.integration.test.ts`) and the workbench checklist in [Testing](TESTING.md) is the owner's review.
 
 Generated output stays under `dist/tools/`, `dist/work/` and deployable `dist/site/`. Routes use browser history. The domain is **romstud.io**, with `/romstudio/` project-base builds retained. CI checks merged main updates before deployment. **The owner must explicitly approve the concrete reviewed v0.1 result before any initial push, input upload or deployment.**
 
@@ -97,7 +97,7 @@ Generated output stays under `dist/tools/`, `dist/work/` and deployable `dist/si
 
 All six games are owner-accepted as working. The ROM Desk workbench is the next and largest remaining v0.1 item. Continue toward the workbench and the documented game limits, using completed game behavior and explanations as the measure of progress. Arcade, Saturn, Xbox and additional games do not expand v0.1. Smaller implementation milestones do not reduce the agreed release scope.
 
-SM64 now has checked original menus/opening and live movement/jump/B actions. The play tier (high-level Fast3D graphics, RDP drawing in a parallel worker, compiled CPU blocks and real-time pacing) reaches PAL 25 fps on the castle fixture; the title screen runs at about 18 fps because its audio still runs the original RSP microcode. High-level audio is the remaining speed work. Saves and ordinary progression remain unaccepted. [Performance evidence](../src/games/n64/sm64/docs/PERFORMANCE.md) distinguishes the measured scopes and retained references; no v0.1 release or deployment has been approved.
+SM64 now has checked original menus/opening and live movement/jump/B actions. The play tier (high-level Fast3D graphics, RDP drawing in a parallel worker, compiled CPU blocks and real-time pacing) reaches PAL 25 fps on the castle fixture; the title screen ran at about 18 fps because its audio still ran the original RSP microcode. A high-level implementation of that audio microcode (10 November) matches the original's output byte for byte and runs the title workload 1.40× faster in Node; in Chrome the title now averages 24.0 fps (from about 18). Saves and ordinary progression remain unaccepted. [Performance evidence](../src/games/n64/sm64/docs/PERFORMANCE.md) distinguishes the measured scopes and retained references; no v0.1 release or deployment has been approved.
 
 The GPU experiment was removed, including its archived code and test artifacts, after it failed to establish a meaningful speed gain. Focus remains on translated CPU/RSP execution and the software renderer. Full-speed acceptance remains required. _(Superseded on 9 November by the execution tiers: GPU drawing may return in the play tier once RSP microcode cost no longer dominates. The earlier experiment drew on the GPU while CPU/RSP execution still set the pace.)_
 

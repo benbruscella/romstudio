@@ -167,7 +167,22 @@ Over six castle frames, 99.95% of CPU instructions ran in blocks. Frames were pi
 
 The paced run's worst second was 24.97 FPS: **full PAL speed on this scene**, with the machine worker idle 48% of the time. The title screen with the animated Mario head ran at 17.9 FPS with no idle time; its audio microcode, still on original instructions, takes about 20% of the machine worker.
 
-**Next.** High-level audio, then FPU fast paths. Not yet done: a rebuilt package, opening-route acceptance, Play-to-Desk state transfer and longer memory observation. The shared software RDP no longer draws outlines along interior triangle edges: anti-aliased blending without FORCE_BL now requires no coverage overflow and a pixel not clearly in front of memory, as on hardware. This changes reference-tier frames, so replays pinned to earlier captured endpoints no longer match; a fresh recovery captures new ones.
+**Next.** High-level audio (done 10 November, below), then FPU fast paths. Not yet done: a rebuilt package, opening-route acceptance, Play-to-Desk state transfer and longer memory observation. The shared software RDP no longer draws outlines along interior triangle edges: anti-aliased blending without FORCE_BL now requires no coverage overflow and a pixel not clearly in front of memory, as on hardware. This changes reference-tier frames, so replays pinned to earlier captured endpoints no longer match; a fresh recovery captures new ones.
+
+## Play tier: high-level audio (10 November)
+
+[`aspmain.ts`](../../../../systems/n64/aspmain.ts) implements the cartridge's audio microcode for the play tier; [AUDIO.md](AUDIO.md#play-tier-the-audio-microcode-in-typescript-10-november) explains it and its checks. Each audio task's RDRAM and DMEM output is byte-identical to the original microcode on 1,520 title-route tasks and 36,000 random differential tasks. On the title route the original audio microcode executed about 206,000 RSP instructions per task, 313 million of 1,187 million over 30 seconds of guest time. With Fast3D and the audio implementation, no RSP instructions execute on that route.
+
+Node 26 title-screen throughput from the launch checkpoint: 500 million ticks per run (133 frames), play tier with compiled blocks and Fast3D drawing synchronously on the software RDP in the same thread. Order was A B B A A B after one warm-up run of each.
+
+| Configuration                       | Runs (s)            | Mean fps-equivalent | Guest ticks per second |
+| ----------------------------------- | ------------------- | ------------------- | ---------------------- |
+| Play tier, original audio microcode | 10.66, 12.33, 12.39 | 11.3                | 42.6 million           |
+| Play tier with high-level audio     | 8.06, 8.79, 8.43    | 15.8                | 59.4 million           |
+
+That is about **1.40× throughput** on this workload. The implementation itself took 0.65–0.78 ms per audio task, about 2% of wall time, with no fallbacks. This Node measurement draws in-thread; the browser draws on a parallel RDP worker. In the browser package the title then averaged 24.0 fps in Chrome over 20 seconds of the title screen, with no original RSP instructions running (individual seconds 15.7–31.8 fps); before this change it ran at 17.9 FPS with audio taking about 20% of the machine worker. That is close to, not yet steadily at, PAL 25 FPS.
+
+Completing audio tasks immediately moves interrupts relative to the CPU, and SM64 sizes each audio buffer from the AI's remaining length, so the PCM stream diverges from the reference tier's within a few audio frames. Fast3D and compiled blocks already cause the same divergence without this change, at stereo frame 105,244 of the same route. With completion held to the original's recorded ticks, the implementation reproduces the reference run exactly: all 972,653 stereo frames, and RDRAM at all 759 frame boundaries.
 
 ## Reference-tier constraints
 

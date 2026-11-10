@@ -62,6 +62,7 @@ export function nesBrowserTitle(
         },
         display: player.display,
         advanceFrame: () => player.advanceFrame(),
+        desk: player,
         enableAudio: (rate) => player.enableAudio(rate),
         takeAudio: () => player.takeAudio(),
         stats: () => ({}),

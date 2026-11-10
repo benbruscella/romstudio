@@ -16,7 +16,7 @@ ROM Studio's mission is to make original games playable on the web and make thei
 
 [INSPIRATION.md](docs/INSPIRATION.md) credits Contra, RetroRecomp, arcade-decomp, TMNT, MAMEKIT and related work, explains what we want to learn from them, and sets our educational standard. **MAMEKIT explains the machine; ROM Studio explains the game.** These goals describe the intended product; the current game studies remain incomplete.
 
-**v0.1 includes all six games across C64, NES and N64, plus the ROM Desk workbench.** [RELEASES.md](docs/RELEASES.md) records that committed scope and retained decisions. The workbench is not yet implemented; the source explorer is one foundation.
+**v0.1 includes all six games across C64, NES and N64, plus the ROM Desk workbench.** [RELEASES.md](docs/RELEASES.md) records that committed scope and retained decisions. [ROM Desk](docs/DESK.md) pauses any game, steps it, and shows the original instruction beside its generated TypeScript with registers, memory, breakpoints and a system diagram.
 
 ## Run locally
 

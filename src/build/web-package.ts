@@ -8,6 +8,28 @@ import type { emitRecoveredProgram } from '../transpiler/program.js';
 import { verifyWebImports } from './web-imports.js';
 import { programFiles } from '../transpiler/static.js';
 
+/** ROM Desk, shared by every package (docs/DESK.md). */
+export const deskModules = [
+  'web/desk/view.js',
+  'web/desk/panel.js',
+  'web/desk/observations.js',
+  'web/desk/diagram.js',
+  'web/desk/mos6502.js',
+  'web/library/code.js',
+];
+
+/** A game's documented routine names for Desk, if it has any. */
+export async function deskSymbols(gameKey: string): Promise<Buffer | undefined> {
+  try {
+    return await readFile(join(repositoryRoot, 'src/games', gameKey, 'desk/symbols.json'));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 const browserModules = [
   'contracts.js',
   'memory.js',
@@ -20,6 +42,7 @@ const browserModules = [
   'web/titles.js',
   'web/audio.js',
   'web/app.js',
+  ...deskModules,
 ];
 
 /** One static shell and package contract for every supported system. Title builders
@@ -47,7 +70,9 @@ export async function packageWeb<Manifest extends object>(options: {
     sourceDirectory = fileURLToPath(new URL('../', import.meta.url));
   const modules = [...browserModules, ...options.system.modules, ...options.titleModules];
   const generatedFiles = programFiles(program, true);
+  const symbols = await deskSymbols(`${options.system.id}/${options.titleId}`);
   const files = [
+    ...(symbols ? ['desk/symbols.json'] : []),
     ...modules,
     'index.html',
     'style.css',
@@ -74,6 +99,7 @@ export async function packageWeb<Manifest extends object>(options: {
       writeFile(join(directory, 'game-code', name), source),
     ),
     writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module' })),
+    ...(symbols ? [writeFile(join(directory, 'desk/symbols.json'), symbols)] : []),
     writeFile(join(directory, 'checkpoint.json'), JSON.stringify(options.checkpoint)),
     writeFile(join(directory, 'example.json'), JSON.stringify(options.inputs)),
     writeFile(join(directory, 'game-code/shapes.json'), JSON.stringify(program.shapes)),

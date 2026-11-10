@@ -86,6 +86,7 @@ export const lemmings: BrowserTitle = {
           : undefined;
       },
       advanceFrame: () => player.advanceFrame(),
+      desk: player,
       enableAudio: (rate) => player.enableAudio(rate),
       takeAudio: () => player.takeAudio(),
       stats: () => {

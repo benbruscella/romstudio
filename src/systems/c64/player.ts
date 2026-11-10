@@ -25,7 +25,7 @@ export class C64Player<Input, Result = never> {
   logicTicks = 0;
   outcome: Result | undefined;
   gap: RecoveryGap | undefined;
-  private readonly clock: FrameClock;
+  readonly clock: FrameClock;
   private current: string | undefined;
   private sound: SidAudio | undefined;
   constructor(
@@ -86,6 +86,35 @@ export class C64Player<Input, Result = never> {
     return this.sound.take();
   }
   advanceFrame(): void {
-    this.clock.advance(this, 63 * 312, () => this.hooks.result?.(this.machine));
+    this.runFrame();
+  }
+  /** ROM Desk: continue the current frame, pausing before the boundary
+   * service or instruction for which `stop` returns true. */
+  runFrame(stop?: (machine: Machine) => boolean): boolean {
+    return this.clock.advance(this, 63 * 312, () => this.hooks.result?.(this.machine), stop);
+  }
+  /** Side-effect-free CPU read; device registers are not read. */
+  peek(address: number): number | undefined {
+    try {
+      return this.bus.peek(address & 0xffff);
+    } catch {
+      return undefined;
+    }
+  }
+  /** Address-space identity of `address` under the current processor port. */
+  identity(address: number): string {
+    const port = this.bus.bytes[1]!;
+    const region =
+      address >= 0xe000 && port & 2
+        ? 'KERNAL ROM'
+        : address >= 0xa000 && address < 0xc000 && (port & 3) === 3
+          ? 'BASIC ROM'
+          : address >= 0xd000 && address < 0xe000 && port & 3
+            ? port & 4
+              ? 'I/O'
+              : 'character ROM'
+            : 'RAM';
+    const hex = port.toString(16).padStart(2, '0').toUpperCase();
+    return `${region} · port $01=$${hex} · code epoch ${this.bus.epoch}`;
   }
 }

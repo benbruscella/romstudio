@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "space": "cpu",
+  "symbols": [
+    {
+      "start": 392,
+      "end": 419,
+      "name": "Unpacker final read and exit",
+      "detail": "Last compressed-byte read through $FE/$FF, then the exit that restores the processor port, enables IRQs and jumps to $0801.",
+      "evidence": "code/startup.ts",
+      "epoch": "packer in low RAM"
+    },
+    {
+      "start": 884,
+      "end": 890,
+      "name": "Release picture Space wait",
+      "detail": "Compares CIA1 port B with $FF until Space is pressed on the original release picture.",
+      "evidence": "code/startup.ts",
+      "epoch": "release picture"
+    },
+    {
+      "start": 2059,
+      "end": 2059,
+      "name": "BASIC SYS entry",
+      "detail": "BASIC SYS target of the loaded ELITE V1.1+ PRG, where the original packer starts; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "loaded PRG (before unpacking)"
+    },
+    {
+      "start": 43277,
+      "end": 43277,
+      "name": "Title control sampling",
+      "detail": "Original routine where the title samples host controls (N for new commander, F1 for launch); entry point.",
+      "evidence": "docs/BOOT.md"
+    },
+    {
+      "start": 46532,
+      "end": 46532,
+      "name": "Title animation JSR $B60C",
+      "detail": "Ordinary title animation reaches JSR $B60C here after poll 608 (single instruction site).",
+      "evidence": "docs/BOOT.md"
+    },
+    {
+      "start": 59158,
+      "end": 59158,
+      "name": "KERNAL screen output",
+      "detail": "Documented KERNAL screen output entry called by the release trainer; entry point.",
+      "evidence": "docs/BOOT.md"
+    },
+    {
+      "start": 61762,
+      "end": 61762,
+      "name": "KERNAL keyboard-buffer entry",
+      "detail": "Documented KERNAL keyboard-buffer entry called by the release trainer; entry point.",
+      "evidence": "docs/BOOT.md"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import { clearN64Trace, type N64Launch } from './checkpoint.js';
 import { N64Controls } from './input.js';
 import { renderN64ColorImage } from './render.js';
 import { DisplaySink, Fast3dTasks } from './fast3d.js';
+import { AspMainTasks } from './aspmain.js';
 import { RdpStreamSink, type RdpFrame } from './rdp-stream.js';
 
 export interface N64PlayerGap {
@@ -58,9 +59,10 @@ export class N64Player {
     };
   }
 
-  /** Play tier: complete recognized Fast3D graphics tasks with the high-level
-   * implementation. Unrecognized or unsupported tasks run the original
-   * microcode. Learn, ROM Desk and verification keep the reference tier. */
+  /** Play tier: complete recognized Fast3D graphics and aspMain audio tasks
+   * with the high-level implementations. Unrecognized or unsupported tasks
+   * run the original microcode. Learn, ROM Desk and verification keep the
+   * reference tier. */
   /** Play tier: run compiled CPU basic blocks while the RSP is halted. The
    * generated blocks address registers as little-endian low/high words. */
   enableBlocks(blocks: ReadonlyMap<number, Vr4300Block>): boolean {
@@ -80,9 +82,58 @@ export class N64Player {
       sink = stream
         ? new RdpStreamSink(memory.ram.bytes, memory.display, stream)
         : new DisplaySink(memory.display);
-    const graphics = new Fast3dTasks(memory.ram.bytes, sink);
-    this.system.enableTaskHandler((dmem) => graphics.run(dmem));
+    const graphics = new Fast3dTasks(memory.ram.bytes, sink),
+      audio = new AspMainTasks(memory.ram.bytes, this.system.rsp.vector);
+    // OSTask type: 1 graphics (Fast3D), 2 audio (aspMain). Each declines
+    // tasks it does not recognize, which then run the original microcode.
+    this.system.enableTaskHandler((dmem) => {
+      const type = dmem.getUint32(0xfc0, false);
+      return type === 1 ? graphics.run(dmem) : type === 2 && audio.run(dmem);
+    });
     return graphics;
+  }
+
+  /** ROM Desk: return to the reference tier. Original microcode runs every
+   * RSP task again, CPU instructions run one at a time, and drawing returns
+   * to this machine's RDP model (the next frame redraws the picture). */
+  enterReferenceTier(): void {
+    this.system.enableTaskHandler(undefined);
+    this.blocks = undefined;
+  }
+
+  /** ROM Desk: one functional machine tick on the reference tier, without
+   * the idle-loop or batched-RSP shortcuts. Reports which processors retired
+   * an instruction. Recovery gaps are recorded exactly as `advance` does. */
+  tick(): { cpu: boolean; rsp: boolean; interrupt: boolean; exception: boolean } {
+    const s = this.system,
+      cpu = s.cpu.instructions,
+      rsp = s.rsp.instructions,
+      interrupts = s.interruptEntries,
+      exceptions = s.synchronousExceptions;
+    if (!this.gap) {
+      try {
+        s.step(this.cpu);
+      } catch (error) {
+        this.recordGap(error);
+      }
+    }
+    return {
+      cpu: s.cpu.instructions !== cpu,
+      rsp: s.rsp.instructions !== rsp,
+      interrupt: s.interruptEntries !== interrupts,
+      exception: s.synchronousExceptions !== exceptions,
+    };
+  }
+
+  private recordGap(error: unknown): void {
+    const s = this.system;
+    if (error instanceof Vr4300Gap) {
+      this.gap = { kind: error.kind, address: error.address, pc: s.cpu.pc, detail: error.message };
+    } else if (error instanceof RspGap) {
+      this.gap = { kind: error.kind, address: error.pc, pc: s.cpu.pc, detail: error.message };
+    } else {
+      throw error;
+    }
   }
 
   enableAudio(rate: number): void {
@@ -132,18 +183,7 @@ export class N64Player {
         }
       }
     } catch (error) {
-      if (error instanceof Vr4300Gap) {
-        this.gap = {
-          kind: error.kind,
-          address: error.address,
-          pc: s.cpu.pc,
-          detail: error.message,
-        };
-      } else if (error instanceof RspGap) {
-        this.gap = { kind: error.kind, address: error.pc, pc: s.cpu.pc, detail: error.message };
-      } else {
-        throw error;
-      }
+      this.recordGap(error);
     }
     clearN64Trace(s);
     return { frame: s.memory.display.fullSyncs !== sync, ticks: s.ticks - initial };

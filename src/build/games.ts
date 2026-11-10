@@ -1,11 +1,12 @@
 import { spawn } from 'node:child_process';
-import { lstat } from 'node:fs/promises';
+import { lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Diagnostic } from '../core.js';
-import { gameBuildDirectory } from '../paths.js';
+import { Diagnostic, sha256 } from '../core.js';
+import { gameBuildDirectory, repositoryRoot } from '../paths.js';
 import { titles, type TitleId } from '../titles.js';
+import { verifyWebImports } from './web-imports.js';
 
 /**
  * Builds game packages for `npm run build` and `npm run dev`, in parallel
@@ -32,6 +33,89 @@ const packageExists = (key: TitleId) =>
     () => false,
   );
 
+/** Player files (shell, runtime, system and title modules, page and styles)
+ * in an existing package that differ from the current compiled code.
+ * Generated game code is not compared: it comes from recovery. */
+export async function stalePlayerFiles(key: TitleId): Promise<string[]> {
+  const manifest = JSON.parse(
+    await readFile(join(gameBuildDirectory(key), 'manifest.json'), 'utf8'),
+  ) as { files?: Record<string, string> };
+  const compiled = fileURLToPath(new URL('../', import.meta.url));
+  const stale: string[] = [];
+  for (const [relative, hash] of Object.entries(manifest.files ?? {})) {
+    const source =
+      relative === 'index.html' || relative === 'style.css'
+        ? join(repositoryRoot, 'src/web', relative)
+        : relative.endsWith('.js') && !relative.startsWith('game-code/')
+          ? join(compiled, relative)
+          : undefined;
+    if (!source) {
+      continue;
+    }
+    const bytes = await readFile(source).catch(() => undefined);
+    if (bytes && sha256(bytes) !== hash) {
+      stale.push(relative);
+    }
+  }
+  const symbols = await readFile(join(repositoryRoot, 'src/games', key, 'desk/symbols.json')).catch(
+    () => undefined,
+  );
+  if (symbols && manifest.files?.['desk/symbols.json'] !== sha256(symbols)) {
+    stale.push('desk/symbols.json');
+  }
+  return stale;
+}
+
+const playerSource = (key: TitleId, relative: string, compiled: string) =>
+  relative === 'desk/symbols.json'
+    ? join(repositoryRoot, 'src/games', key, 'desk/symbols.json')
+    : relative === 'index.html' || relative === 'style.css'
+      ? join(repositoryRoot, 'src/web', relative)
+      : join(compiled, relative);
+
+/** Copy changed player files into an existing package and re-hash its
+ * manifest, without rerunning recovery. Returns false (a full rebuild is
+ * needed) when a changed module imports a file the package lacks. A package
+ * that had passed verification is marked stale. */
+export async function refreshPlayerFiles(key: TitleId, stale: string[]): Promise<boolean> {
+  const directory = gameBuildDirectory(key),
+    manifestPath = join(directory, 'manifest.json'),
+    compiled = fileURLToPath(new URL('../', import.meta.url));
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+    exportId: string;
+    files: Record<string, string>;
+    verification?: { referenceReplay?: string; currentSource?: string };
+  };
+  const updates = new Map<string, Buffer>();
+  for (const relative of stale) {
+    updates.set(relative, await readFile(playerSource(key, relative, compiled)));
+  }
+  // Only the updated modules are scanned; every other file need only exist.
+  const sources = new Map<string, string>(
+    Object.keys(manifest.files)
+      .filter((relative) => relative.endsWith('.js'))
+      .map((relative) => [relative, updates.get(relative)?.toString() ?? '']),
+  );
+  try {
+    verifyWebImports(sources);
+  } catch {
+    return false;
+  }
+  for (const [relative, bytes] of updates) {
+    await mkdir(dirname(join(directory, relative)), { recursive: true });
+    await writeFile(join(directory, relative), bytes);
+    manifest.files[relative] = sha256(bytes);
+  }
+  manifest.exportId = sha256(JSON.stringify(manifest.files));
+  if (manifest.verification?.referenceReplay === 'passed') {
+    manifest.verification.referenceReplay = 'stale';
+    manifest.verification.currentSource =
+      'Player files refreshed with current code; run verify-game to verify again.';
+  }
+  await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+  return true;
+}
+
 export async function planGameBuilds(options: { verify?: boolean } = {}): Promise<GameBuild[]> {
   const plan: GameBuild[] = [];
   for (const key of Object.keys(titles) as TitleId[]) {
@@ -51,11 +135,19 @@ export async function planGameBuilds(options: { verify?: boolean } = {}): Promis
           : 'first build: original recovery once, then package (a few minutes)',
       });
     } else if (await packageExists(key)) {
-      plan.push({
-        key,
-        work: false,
-        description: 'reuse existing package (verify-game refreshes it)',
-      });
+      const stale = await stalePlayerFiles(key);
+      const changed = `${stale.slice(0, 3).join(', ')}${stale.length > 3 ? `, +${stale.length - 3} more` : ''}`;
+      plan.push(
+        !stale.length
+          ? { key, work: false, description: 'reuse existing package (verify-game refreshes it)' }
+          : (await refreshPlayerFiles(key, stale))
+            ? { key, work: false, description: `refreshed player files in place (${changed})` }
+            : {
+                key,
+                work: true,
+                description: `rebuild: player code changed (${changed}) (a few minutes)`,
+              },
+      );
     } else {
       plan.push({
         key,

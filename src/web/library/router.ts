@@ -1,7 +1,8 @@
 export interface LibraryRoute {
   system?: string;
   game?: string;
-  view: 'play' | 'learn';
+  /** `identify` is the top-level /desk page (media identification). */
+  view: 'play' | 'learn' | 'desk' | 'identify';
   chapter?: string;
 }
 
@@ -16,15 +17,17 @@ export function libraryRoute(pathname: string, base: string): LibraryRoute | und
   } catch {
     return undefined;
   }
-  if (
-    parts.some((part) => !/^[a-z0-9-]+$/.test(part)) ||
-    parts.length > 4 ||
-    (parts.length > 2 && parts[2] !== 'learn')
-  ) {
+  if (parts.some((part) => !/^[a-z0-9-]+$/.test(part)) || parts.length > 4) {
+    return undefined;
+  }
+  if (parts[0] === 'desk') {
+    return parts.length === 1 ? { view: 'identify' } : undefined;
+  }
+  if (parts.length > 2 && parts[2] !== 'learn' && !(parts[2] === 'desk' && parts.length === 3)) {
     return undefined;
   }
   return {
-    view: parts[2] === 'learn' ? 'learn' : 'play',
+    view: parts[2] === 'learn' ? 'learn' : parts[2] === 'desk' ? 'desk' : 'play',
     ...(parts[0] ? { system: parts[0] } : {}),
     ...(parts[1] ? { game: parts[1] } : {}),
     ...(parts[3] ? { chapter: parts[3] } : {}),
