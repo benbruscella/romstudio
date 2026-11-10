@@ -20,7 +20,7 @@ ROM Studio's mission is to make original games playable on the web and make thei
 
 ## Run locally
 
-Uses the Node.js version pinned in `.nvmrc` (26.12.1).
+Uses the Node.js version pinned in `.nvmrc` (26.13.0).
 
 ```sh
 npm ci

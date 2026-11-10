@@ -121,7 +121,7 @@ Node on macOS ARM64 and Bun have crashed natively during analysis/tests. On 9 No
 
 ## Source hygiene, outputs and release automation
 
-Prettier, ESLint, EditorConfig and `.nvmrc` are configured. Maintained modules use TypeScript or `.js` with package type module; no maintained `.mjs` files are required. `.nvmrc` pins Node 26.12.1. Tests are colocated, and the runner discovers source-owned tests rather than stale compiled files.
+Prettier, ESLint, EditorConfig and `.nvmrc` are configured. Maintained modules use TypeScript or `.js` with package type module; no maintained `.mjs` files are required. `.nvmrc` pins Node 26.13.0. Tests are colocated, and the runner discovers source-owned tests rather than stale compiled files.
 
 Generated output belongs in `dist/tools/`, `dist/work/` and `dist/site/`; `.romkit/` and old `exports/` were removed. Games own their recipes, code and chapters under `src/games/<system>/<game>/`. Bounded SM64 boot source packages live under `analysis/startup/source-study/`, separate from the canonical browser package. [Architecture](ARCHITECTURE.md), [CLI](CLI.md) and [Build](BUILD.md) define these boundaries.
 

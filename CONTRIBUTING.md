@@ -14,7 +14,7 @@ npm run cli -- identify roms
 npm run dev
 ```
 
-Use the Node version pinned in `.nvmrc` (currently 26.12.1). Original game media are local inputs under `roms/`; they are not included in the source repository. Generated game bytes and all analysis output belong under ignored `dist/`. Synthetic tests must work without private media. Use `npm test` for integration tests, including game verification, when you have the pinned inputs.
+Use the Node version pinned in `.nvmrc` (currently 26.13.0). Original game media are local inputs under `roms/`; they are not included in the source repository. Generated game bytes and all analysis output belong under ignored `dist/`. Synthetic tests must work without private media. Use `npm test` for integration tests, including game verification, when you have the pinned inputs.
 
 ## Add a game
 
