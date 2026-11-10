@@ -1,0 +1,34 @@
+name: Verified site build
+description: Restore the sealed original media, verify all six games against them and build dist/site.
+inputs:
+  media-key:
+    description: The MEDIA_KEY secret that opens ci/rom-studio-media.sealed.
+    required: true
+  domain:
+    description: Custom domain the site is built for (base /).
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+    - run: npm ci
+      shell: bash
+    # The pinned inputs are committed encrypted; MEDIA_KEY opens them. Both
+    # come from `npm run cli -- deploy-setup` (docs/BUILD.md).
+    - name: Verify and restore media by recipe identity
+      shell: bash
+      env:
+        MEDIA_KEY: ${{ inputs.media-key }}
+      run: |
+        if [ ! -f ci/rom-studio-media.sealed ] || [ -z "$MEDIA_KEY" ]; then
+          echo "::error title=Missing game inputs::Run npm run cli -- deploy-setup on a machine with the original media, then commit ci/rom-studio-media.sealed. See docs/BUILD.md#ci-pull-requests-and-main."
+          exit 1
+        fi
+        npm run cli -- media import ci/rom-studio-media.sealed
+    # build --deploy verifies every game against its original for these sources.
+    - name: Build verified static site
+      shell: bash
+      run: npm run build -- --deploy --domain "${{ inputs.domain }}"
