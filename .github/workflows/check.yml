@@ -1,5 +1,9 @@
 name: Check, build and deploy
 
+# Pull requests carry the full verification (docs/BUILD.md#ci-pull-requests-and-main):
+# checks, unit tests, the verified build of all six games and the integration
+# tests. A merge to main builds the verified site again for the merged commit
+# and deploys it to romstud.io.
 on:
   pull_request:
   push:
@@ -7,6 +11,11 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # The site's custom domain: builds target its root, and the deploy job keeps
+  # the GitHub Pages custom domain set to it (Actions deployments ignore CNAME).
+  PAGES_DOMAIN: romstud.io
 
 # Keep main builds in order so an older, slower recovery cannot publish after
 # a newer merge. GitHub retains the newest pending run in this group.
@@ -27,46 +36,38 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test -- unit
+      - name: Note for pull requests from forks
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: echo "::notice title=Verification skipped::Pull requests from forks cannot read MEDIA_KEY, so the verified build and integration tests run only for branches in this repository."
+
+  verify:
+    name: Verify games, build site and run integration tests
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/verified-build
+        with:
+          media-key: ${{ secrets.MEDIA_KEY }}
+          domain: ${{ env.PAGES_DOMAIN }}
+      # After the build, so ROM Desk's stepping checks run on these packages.
+      - name: Test real-media recovery, delivery and ROM Desk stepping
+        run: npm test -- integration
 
   build:
-    name: Verify original games and build site
+    name: Verify games and build site
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/verified-build
         with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      # The pinned inputs are committed encrypted; MEDIA_KEY opens them. Both
-      # come from `npm run cli -- deploy-setup` (docs/BUILD.md).
-      - name: Verify and restore media by recipe identity
-        env:
-          MEDIA_KEY: ${{ secrets.MEDIA_KEY }}
-        run: |
-          if [ ! -f ci/rom-studio-media.sealed ] || [ -z "$MEDIA_KEY" ]; then
-            echo "::error title=Missing game inputs::Run npm run cli -- deploy-setup on a machine with the original media, then commit ci/rom-studio-media.sealed. See docs/BUILD.md#ci-on-merge-to-main."
-            exit 1
-          fi
-          npm run cli -- media import ci/rom-studio-media.sealed
-      # Until the custom domain's DNS is live, build for the project URL
-      # (https://<owner>.github.io/<repo>/). Set the repository variable
-      # PAGES_DOMAIN (for example romstud.io) to build for the domain root.
-      - name: Build verified static site
-        env:
-          PAGES_DOMAIN: ${{ vars.PAGES_DOMAIN }}
-        run: |
-          if [ -n "$PAGES_DOMAIN" ]; then
-            npm run build -- --deploy --domain "$PAGES_DOMAIN"
-          else
-            npm run build -- --deploy --base "/${GITHUB_REPOSITORY#*/}/"
-          fi
-      # After the build, so ROM Desk's stepping checks run on these packages.
-      - name: Test real-media recovery, delivery and ROM Desk stepping
-        run: npm test -- integration
+          media-key: ${{ secrets.MEDIA_KEY }}
+          domain: ${{ env.PAGES_DOMAIN }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist/site
@@ -84,19 +85,42 @@ jobs:
       cancel-in-progress: false
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://${{ env.PAGES_DOMAIN }}/
     steps:
-      # Pages must publish from GitHub Actions, not a branch. Workflows cannot
-      # change that setting; `npm run cli -- deploy-setup` does (once).
-      - name: Check Pages publishes from GitHub Actions
+      # The site is built for the domain root, so the custom domain must be in
+      # place before it is published. If it cannot be set, nothing deploys and
+      # the previous site keeps working. PAGES_ADMIN_TOKEN is optional: it is
+      # used only if the workflow token may not change Pages settings.
+      - name: Point GitHub Pages at the custom domain
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAGES_ADMIN_TOKEN || github.token }}
         run: |
-          source=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type || true)
+          pages=$(gh api "repos/$GITHUB_REPOSITORY/pages")
+          source=$(jq -r .build_type <<<"$pages")
+          cname=$(jq -r '.cname // ""' <<<"$pages")
           if [ "$source" != "workflow" ]; then
-            echo "::error title=Pages source::GitHub Pages publishes from '$source', not GitHub Actions. Run npm run cli -- deploy-setup. See docs/BUILD.md#ci-on-merge-to-main."
+            echo "::error title=Pages source::GitHub Pages publishes from '$source', not GitHub Actions. Run npm run cli -- deploy-setup. See docs/BUILD.md#ci-pull-requests-and-main."
             exit 1
+          fi
+          if [ "$cname" != "$PAGES_DOMAIN" ]; then
+            if ! gh api -X PUT "repos/$GITHUB_REPOSITORY/pages" -f cname="$PAGES_DOMAIN"; then
+              echo "::error title=Custom domain::Could not set the Pages custom domain to $PAGES_DOMAIN with this token. Run npm run cli -- deploy-setup --domain $PAGES_DOMAIN once. See docs/BUILD.md#ci-pull-requests-and-main."
+              exit 1
+            fi
+            echo "GitHub Pages custom domain set to $PAGES_DOMAIN."
           fi
       - uses: actions/configure-pages@v5
       - uses: actions/deploy-pages@v5
         id: deployment
+      # GitHub issues the certificate after DNS checks pass; until then this
+      # cannot succeed, and a later deploy retries it.
+      - name: Enforce HTTPS when the certificate is ready
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.PAGES_ADMIN_TOKEN || github.token }}
+        run: |
+          if [ "$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .https_enforced)" != "true" ]; then
+            gh api -X PUT "repos/$GITHUB_REPOSITORY/pages" -F https_enforced=true \
+              && echo "HTTPS enforced for https://$PAGES_DOMAIN/." \
+              || echo "::notice title=HTTPS::The certificate for $PAGES_DOMAIN is not ready yet; a later deploy enforces HTTPS."
+          fi

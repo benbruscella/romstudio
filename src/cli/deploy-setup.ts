@@ -78,9 +78,9 @@ export async function deploySetup(log: (message: string) => void, domain?: strin
   if (domain) {
     // Only once DNS points at GitHub Pages: GitHub then redirects the
     // github.io project URL to this domain.
+    // The workflow normally does this itself on deploy (PAGES_DOMAIN).
     await gh(['api', '-X', 'PUT', `repos/${repository}/pages`, '-f', `cname=${domain}`]);
-    await gh(['variable', 'set', 'PAGES_DOMAIN', '--repo', repository, '--body', domain]);
-    log(`Custom domain ${domain} set; builds now target its root (PAGES_DOMAIN).`);
+    log(`GitHub Pages custom domain set to ${domain}.`);
   }
   log('Commit ci/rom-studio-media.sealed; every merge to main then builds, verifies and deploys.');
 }
