@@ -1,0 +1,44 @@
+{
+  "id": "nebulus-nfi-us",
+  "version": 1,
+  "title": "Tower Toppler (Nebulus) \u00b7 NFI US release",
+  "system": "c64",
+  "timing": "pal-6569",
+  "joystickPort": 2,
+  "media": [
+    {
+      "name": "TOWERTOP.D64",
+      "sha256": "82c00a2d59c2614d0076479d397629eb7090872a8be615845c165295dd60ea46",
+      "boot": true
+    }
+  ],
+  "launch": {
+    "file": "TOWER TOPPLER+",
+    "loadAddress": 2049,
+    "entry": 2088,
+    "sysPrefixAddress": 2053,
+    "sysPrefix": [158, 50, 48, 56, 56],
+    "expectedBytes": [120, 169, 52, 133, 1, 160, 0]
+  },
+  "recovery": {
+    "maxInstructions": 4000000,
+    "maxVariants": 50000,
+    "maxBoundaryOperations": 100000,
+    "undocumentedOpcodes": [60, 252]
+  },
+  "menu": {
+    "address": 43921,
+    "completedPolls": 16,
+    "expectedBytes": [169, 255, 141, 0, 220, 173, 0, 220],
+    "expectedFile": "TOWER1"
+  },
+  "notes": [
+    "The supplied VERSION.NFO identifies Tower Toppler, the US release supplied as Nebulus, with joystick port 2 and two trainers.",
+    "The BASIC line's SYS2088 prefix is reviewed explicitly: its link points at the terminator and credits follow the decimal address.",
+    "PAL is the initial timing profile; the supplied PAL+NTSC metadata is not evidence of NTSC verification.",
+    "Startup sends Space and joystick fire to leave the release screens. Trainer keys are not pressed; trainer implementation and defaults remain unverified.",
+    "KERNAL LOAD reads TOWER1 from pinned disk bytes; serial-drive execution and transfer timing are not reproduced.",
+    "This recipe captures the original menu input loop. The first-tower browser scenario continues from that checkpoint and verifies gameplay coverage separately."
+  ],
+  "mediaDirectory": "roms/c64/nebulus"
+}

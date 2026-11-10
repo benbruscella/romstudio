@@ -1,0 +1,49 @@
+{
+  "name": "rom-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ROM Studio — inspect original game binaries, understand their assembly, and build for the web",
+  "engines": {
+    "node": ">=26"
+  },
+  "bin": {
+    "roms": "./dist/tools/src/cli.js"
+  },
+  "scripts": {
+    "dev": "tsc -p tsconfig.json && node --no-concurrent-sparkplug dist/tools/src/cli.js dev",
+    "build": "tsc -p tsconfig.json && node --no-concurrent-sparkplug dist/tools/src/cli.js build",
+    "test": "tsc -p tsconfig.json && node dist/tools/src/testing/run.js",
+    "check": "prettier . --check && eslint src eslint.config.js --max-warnings 0 && tsc -p tsconfig.json --noEmit",
+    "fix": "prettier . --write && eslint src eslint.config.js --fix",
+    "cli": "tsc -p tsconfig.json && node --no-concurrent-sparkplug dist/tools/src/cli.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.6.6",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.14.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1"
+  },
+  "homepage": "https://romstud.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/benbruscella/romstudio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/benbruscella/romstudio/issues"
+  },
+  "files": [
+    "dist/tools/src/",
+    "src/",
+    "docs/",
+    "README.md",
+    "CONTRIBUTING.md"
+  ],
+  "overrides": {
+    "minimatch": "11.0.5"
+  }
+}

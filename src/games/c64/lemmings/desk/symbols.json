@@ -1,0 +1,493 @@
+{
+  "schemaVersion": 1,
+  "space": "cpu",
+  "symbols": [
+    {
+      "start": 256,
+      "end": 256,
+      "name": "Second unpacker",
+      "detail": "Entry of the unpacker copied into $00E8–$01E7, executing inside the stack page; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "second unpacker"
+    },
+    {
+      "start": 832,
+      "end": 832,
+      "name": "Relocated unpacker",
+      "detail": "Runs the relocated unpacker, which also copies a table to $0723 over the bootstrap; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "relocated unpacker"
+    },
+    {
+      "start": 1029,
+      "end": 1051,
+      "name": "Relocate loader payload",
+      "detail": "Copies 199 pages from $3901 to $0801 (routine copied from $2D07–$2D1D).",
+      "evidence": "code/startup.ts",
+      "epoch": "after release exit"
+    },
+    {
+      "start": 2049,
+      "end": 2049,
+      "name": "Copy unpacker to stack page",
+      "detail": "Copies another unpacker into $00E8–$01E7 and enters it at $0100; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "relocated payload"
+    },
+    {
+      "start": 2060,
+      "end": 2082,
+      "name": "Bootstrap copy to $0340",
+      "detail": "Copies 256 bytes from $4131 to $0340, then jumps there.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "boot PRG"
+    },
+    {
+      "start": 2372,
+      "end": 2372,
+      "name": "Terrain strip pointer advance",
+      "detail": "INC $47F8 advances the first terrain strip sprite pointer (single instruction site).",
+      "evidence": "docs/BROWSER.md",
+      "epoch": "level"
+    },
+    {
+      "start": 2679,
+      "end": 2679,
+      "name": "Keyboard scan",
+      "detail": "Tests a table of column and row masks; the 8 key makes it write slot 7 to $05C0; entry point.",
+      "evidence": "docs/DIGGER.md",
+      "epoch": "level"
+    },
+    {
+      "start": 3641,
+      "end": 3641,
+      "name": "Level update entry",
+      "detail": "Level-update routine entry used as the player logic boundary; entry point.",
+      "evidence": "player.ts",
+      "epoch": "level"
+    },
+    {
+      "start": 3708,
+      "end": 3708,
+      "name": "End-of-level path",
+      "detail": "Address where the player reads the level result once the end flag ($0588 bit 7) is set.",
+      "evidence": "player.ts",
+      "epoch": "level"
+    },
+    {
+      "start": 3817,
+      "end": 3817,
+      "name": "Decrement timer",
+      "detail": "Decrements the level timer copied to $CB39–$CB3B; entry point.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 3886,
+      "end": 3886,
+      "name": "Documentation page Space wait",
+      "detail": "Waits for SPACE on each of three documentation pages; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "documentation pages"
+    },
+    {
+      "start": 4096,
+      "end": 4096,
+      "name": "Level setup",
+      "detail": "Engine setup that copies ten header pointers into instruction operands and working tables; entry point.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 4334,
+      "end": 4334,
+      "name": "Initialize release interval",
+      "detail": "Initializes $0578 from the release-interval table index $E03C (source address).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 4502,
+      "end": 4502,
+      "name": "Copy skill-stock tens",
+      "detail": "Copies $E044–$E04B to the tens array at $05C8–$05CF (source address).",
+      "evidence": "docs/DIGGER.md",
+      "epoch": "level"
+    },
+    {
+      "start": 4510,
+      "end": 4510,
+      "name": "Copy skill-stock units",
+      "detail": "Copies $E04C–$E053 to the units array at $05D2–$05D9 (source address).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 4519,
+      "end": 4519,
+      "name": "Copy level time",
+      "detail": "Copies the time digits $E041–$E043 to $CB39–$CB3B (source address).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 4945,
+      "end": 4945,
+      "name": "Patch exit tests",
+      "detail": "Patches the exit tests at $1F80 from the header exit records; entry point.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 5377,
+      "end": 5435,
+      "name": "Click dispatcher",
+      "detail": "Checks the pending click, targeted lemming, selected slot and stock, then looks up the slot handler at $15BA/$15C2.",
+      "evidence": "docs/DIGGER.md",
+      "epoch": "level"
+    },
+    {
+      "start": 5480,
+      "end": 5480,
+      "name": "Render two decimal digits",
+      "detail": "Renders a skill stock as two decimal digits; entry point.",
+      "evidence": "code/digger.ts",
+      "epoch": "level"
+    },
+    {
+      "start": 5708,
+      "end": 5755,
+      "name": "Digger assignment",
+      "detail": "Slot 7 handler that rejects unsuitable modes and otherwise assigns digging mode 6.",
+      "evidence": "code/digger.ts",
+      "epoch": "level"
+    },
+    {
+      "start": 5843,
+      "end": 5843,
+      "name": "Cursor control entry",
+      "detail": "Input entry where cursor controls are applied for each numbered cursor-control call; entry point.",
+      "evidence": "player.ts",
+      "epoch": "level"
+    },
+    {
+      "start": 6120,
+      "end": 6120,
+      "name": "Cursor bottom clamp",
+      "detail": "Loads 167 and writes it to cursor Y at $B8 after an update exceeds the bottom boundary.",
+      "evidence": "docs/BROWSER.md",
+      "epoch": "level"
+    },
+    {
+      "start": 6156,
+      "end": 6156,
+      "name": "Vertical cursor clamp",
+      "detail": "Clamps vertical cursor movement (with $17E8) (source address).",
+      "evidence": "recovery/build.ts",
+      "epoch": "level"
+    },
+    {
+      "start": 6237,
+      "end": 6237,
+      "name": "Horizontal cursor clamp ($185D)",
+      "detail": "Clamps horizontal cursor movement (with $18B8) (source address).",
+      "evidence": "recovery/build.ts",
+      "epoch": "level"
+    },
+    {
+      "start": 6328,
+      "end": 6328,
+      "name": "Horizontal cursor clamp ($18B8)",
+      "detail": "Clamps horizontal cursor movement (with $185D) (source address).",
+      "evidence": "recovery/build.ts",
+      "epoch": "level"
+    },
+    {
+      "start": 7641,
+      "end": 7785,
+      "name": "Lemming release routine",
+      "detail": "Adds a table-selected increment to an accumulator and, on carry, releases a lemming from an enabled entrance; returns at $1E69.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 7682,
+      "end": 7682,
+      "name": "Select release increment",
+      "detail": "Uses the release-interval index to select the release increment (source address).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 7691,
+      "end": 7697,
+      "name": "Release count cap",
+      "detail": "Stops releases when the released count reaches the header lemming count $E039.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 7713,
+      "end": 7771,
+      "name": "Entrance record selection",
+      "detail": "Selects and uses the header entrance records to place a new lemming.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 7748,
+      "end": 7748,
+      "name": "Spawn X offset",
+      "detail": "Adds 2 to the entrance X for a new lemming (source address).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 7765,
+      "end": 7765,
+      "name": "Spawn Y offset",
+      "detail": "Adds 5 to the entrance Y for a new lemming (source address).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 8064,
+      "end": 8064,
+      "name": "Exit tests",
+      "detail": "Exit tests patched by $1351 from the header exit records (source address).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 8960,
+      "end": 8960,
+      "name": "Release intro entry",
+      "detail": "Enters the release intro (continuing at $2C16), clears the screen and runs fades; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "release intro"
+    },
+    {
+      "start": 9140,
+      "end": 9140,
+      "name": "Release intro raster IRQ ($23B4)",
+      "detail": "Nested raster interrupt handler that maintains the release intro; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "release intro"
+    },
+    {
+      "start": 9200,
+      "end": 9200,
+      "name": "Release intro raster IRQ ($23F0)",
+      "detail": "Nested raster interrupt handler that maintains the release intro; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "release intro"
+    },
+    {
+      "start": 9290,
+      "end": 9454,
+      "name": "Digger handler",
+      "detail": "Mode 6 handler that clears the animation frame terrain points and returns a movement index.",
+      "evidence": "code/digger.ts",
+      "epoch": "level"
+    },
+    {
+      "start": 10366,
+      "end": 10366,
+      "name": "Patch terrain reader operands",
+      "detail": "Patches the terrain reader operands for the current lemming; entry point.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 10476,
+      "end": 10511,
+      "name": "Terrain reader",
+      "detail": "Combines horizontal and vertical table entries to locate a byte and mask one of its four two-bit pairs.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 10512,
+      "end": 10532,
+      "name": "Alternate terrain classifier",
+      "detail": "Helper that additionally turns pair 3 into an empty result for its callers.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 10544,
+      "end": 10544,
+      "name": "Clear terrain pair",
+      "detail": "Clears a two-bit pair in the world bitmap and, for a visible column, the display bitmap; entry point.",
+      "evidence": "docs/DIGGER.md",
+      "epoch": "level"
+    },
+    {
+      "start": 10645,
+      "end": 10650,
+      "name": "Skip empty-pair stores",
+      "detail": "Skips both stores when the world pair is already empty, preserving composited display graphics.",
+      "evidence": "docs/DIGGER.md",
+      "epoch": "level"
+    },
+    {
+      "start": 10836,
+      "end": 10836,
+      "name": "Patch object loop limit",
+      "detail": "Patches the object-table loop limit at $2B1C from header byte $E07B (source address).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 11036,
+      "end": 11036,
+      "name": "Object-table loop limit",
+      "detail": "Object-table loop limit test patched by $2A54 (source address).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level"
+    },
+    {
+      "start": 11286,
+      "end": 11286,
+      "name": "Release intro (from $2300)",
+      "detail": "Reached from $2300 to clear the screen and run the release intro fades; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "release intro"
+    },
+    {
+      "start": 11439,
+      "end": 11439,
+      "name": "Release intro Space poll",
+      "detail": "Polls SPACE; the scripted input continues through the original exit branch; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "release intro"
+    },
+    {
+      "start": 11447,
+      "end": 11447,
+      "name": "Release intro exit",
+      "detail": "Release exit branch, after which the $0405 relocation annotation is enabled (source address).",
+      "evidence": "code/startup.ts",
+      "epoch": "release intro"
+    },
+    {
+      "start": 21152,
+      "end": 21156,
+      "name": "Joystick fire read",
+      "detail": "LDA $DC00 / AND #$10 read of the fire bit where the level scenario supplies its fire press.",
+      "evidence": "recovery/level.ts",
+      "epoch": "after startup, before level"
+    },
+    {
+      "start": 36950,
+      "end": 36950,
+      "name": "First trainer prompt",
+      "detail": "First of twelve trainer prompts that call KERNAL GETIN and compare the result with Y/N; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "trainer prompts"
+    },
+    {
+      "start": 37316,
+      "end": 37316,
+      "name": "Menu input loop",
+      "detail": "Game menu input loop reached after the menu loads; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "menu"
+    },
+    {
+      "start": 37347,
+      "end": 37347,
+      "name": "Menu GETIN result test",
+      "detail": "Tests the GETIN result; character 1 takes the one-player branch (single instruction site).",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "menu"
+    },
+    {
+      "start": 37453,
+      "end": 37453,
+      "name": "Restore normal display",
+      "detail": "Restores the normal display before entering the next loader stage; entry point.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "menu"
+    },
+    {
+      "start": 37705,
+      "end": 37705,
+      "name": "Derive selected level code",
+      "detail": "Derives the selected level code; entry point.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "menu"
+    },
+    {
+      "start": 52736,
+      "end": 52742,
+      "name": "Start compressed file",
+      "detail": "Disk request (LDX #8, JSR $FFBA, LDA #8) where the two-letter file stream is selected.",
+      "evidence": "code/startup.ts",
+      "epoch": "game loader"
+    },
+    {
+      "start": 52824,
+      "end": 52824,
+      "name": "Read compressed block headers",
+      "detail": "Reads compressed block headers before expanding the selected disk stream; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "game loader"
+    },
+    {
+      "start": 52854,
+      "end": 52854,
+      "name": "Finish compressed file",
+      "detail": "Loader exit where the stream must be fully consumed before returning (source address).",
+      "evidence": "code/startup.ts",
+      "epoch": "game loader"
+    },
+    {
+      "start": 52860,
+      "end": 52860,
+      "name": "Compressed stream decoder",
+      "detail": "Expands the selected disk stream, writing output backward from the destination end; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "game loader"
+    },
+    {
+      "start": 52996,
+      "end": 52999,
+      "name": "Overlapping BIT/PLA refill",
+      "detail": "Refill path BIT $68 / PLA / RTS; the end-of-stream branch enters at $CF05 to execute the operand byte as PLA.",
+      "evidence": "code/startup.ts",
+      "epoch": "game loader"
+    },
+    {
+      "start": 53069,
+      "end": 53069,
+      "name": "Disk byte receiver",
+      "detail": "Original receiver boundary where bytes from the pinned disk file are supplied; entry point.",
+      "evidence": "docs/BOOT.md",
+      "epoch": "game loader"
+    },
+    {
+      "start": 57248,
+      "end": 57248,
+      "name": "Trainer-aware stock decrement",
+      "detail": "Checks the trainer bit in $CFFC, borrows a ten when units are zero, then subtracts one use; entry point.",
+      "evidence": "docs/DIGGER.md",
+      "epoch": "level"
+    },
+    {
+      "start": 57492,
+      "end": 57492,
+      "name": "Level file rearrangement decoder",
+      "detail": "Performs another expansion and rearrangement of the decoded level file; entry point.",
+      "evidence": "docs/LEVELS.md",
+      "epoch": "level load"
+    },
+    {
+      "start": 65374,
+      "end": 65374,
+      "name": "KERNAL video timing tail",
+      "detail": "Documented KERNAL video timing tail entered by the menu display restoration; entry point.",
+      "evidence": "docs/LEVELS.md"
+    }
+  ]
+}

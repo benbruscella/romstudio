@@ -1,0 +1,9 @@
+node_modules/
+dist/
+roms/
+firmware/
+.git/
+.agents/
+.codex/
+.aws/
+.claude/

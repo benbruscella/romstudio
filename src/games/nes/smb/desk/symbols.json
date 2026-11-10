@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "space": "cpu",
+  "symbols": [
+    {
+      "start": 32768,
+      "end": 32768,
+      "name": "Reset handler",
+      "detail": "Reset vector target; disables IRQ handling and clears the decimal flag; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 32770,
+      "end": 32777,
+      "name": "PPU control and stack init",
+      "detail": "Writes PPU control and initializes the CPU stack.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 32778,
+      "end": 32786,
+      "name": "Wait for vblank twice",
+      "detail": "Polls PPUSTATUS twice, waiting for vblank transitions.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 32788,
+      "end": 32807,
+      "name": "Choose reset path",
+      "detail": "Inspects retained startup bytes and the $A5 marker before choosing the reset path.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 32817,
+      "end": 32817,
+      "name": "Initialize mode byte",
+      "detail": "Initializes the mode byte at $0770 (source address).",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 32820,
+      "end": 32820,
+      "name": "Write startup marker",
+      "detail": "Writes the startup marker $A5 to $07FF (source address).",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 32898,
+      "end": 32898,
+      "name": "NMI handler",
+      "detail": "NMI vector target where the original game performs its frame work; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 36444,
+      "end": 36444,
+      "name": "Latch and read controllers",
+      "detail": "Writes one, then zero, to $4016 and reads the controllers; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 36458,
+      "end": 36458,
+      "name": "Serial controller read helper",
+      "detail": "Reads eight serial values, shifts them into an accumulator and stores the result in $06FC,X; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 37068,
+      "end": 37068,
+      "name": "Clear memory regions",
+      "detail": "Clears the selected CPU-memory regions through a zero-page pointer; entry point.",
+      "evidence": "docs/STARTUP.md"
+    },
+    {
+      "start": 62161,
+      "end": 62169,
+      "name": "Disable channels in mode zero",
+      "detail": "Reads mode $0770; when zero, writes zero to $4015, disabling the channels.",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 62170,
+      "end": 62177,
+      "name": "Enable APU voices",
+      "detail": "Writes $FF to $4017 (five-step sequencing, IRQ inhibited), then $0F to $4015 to enable the four synthesized voices.",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 62338,
+      "end": 62341,
+      "name": "Pulse 1 sweep/duty writes",
+      "detail": "Writes Y to pulse 1 sweep ($F382) and X to its duty/envelope register ($F385).",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 62351,
+      "end": 62364,
+      "name": "Indexed timer writer",
+      "detail": "Reads a timer pair through Y from $FF01/$FF00, then writes $4002,X and $4003,X; X selects the voice register block.",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 62368,
+      "end": 62371,
+      "name": "Pulse 2 duty/sweep writes",
+      "detail": "Writes the pulse 2 duty/envelope ($F3A0) and sweep ($F3A3) registers.",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 63676,
+      "end": 63682,
+      "name": "Noise register writes",
+      "detail": "Writes noise volume/envelope, noise period/mode and length/restart.",
+      "evidence": "docs/AUDIO.md"
+    },
+    {
+      "start": 63701,
+      "end": 63701,
+      "name": "Note duration table read",
+      "detail": "Reads the PAL note duration table at $FF66,Y (single instruction site).",
+      "evidence": "docs/AUDIO.md"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.cache/
+roms/
+firmware/
+*.d64
+*.D64
+*.prg
+*.PRG
+*.bin
+*.BIN
+*.vsf
+.DS_Store
+.playwright-mcp/
+.claude/worktrees/

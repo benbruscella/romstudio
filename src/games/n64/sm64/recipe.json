@@ -1,0 +1,28 @@
+{
+  "id": "sm64-eu-revision-0",
+  "version": 1,
+  "title": "Super Mario 64 — Europe",
+  "system": "n64",
+  "timing": "n64-pal",
+  "mediaDirectory": "roms/n64/sm64",
+  "media": [
+    {
+      "name": "nus-nsmp-0.u1",
+      "role": "rom",
+      "sha256": "8ca0178cb5c7c95bdc5dc9674665996a2d7210f94fb014e7f8b68910c77c3ecb"
+    }
+  ],
+  "cartridge": {
+    "bytes": 8388608,
+    "byteOrder": "byte-swapped-16",
+    "gameCode": "NSMP",
+    "revision": 0,
+    "canonicalSha256": "c792e5ebcba34c8d98c0c44cf29747c8ee67e7b907fcc77887f9ff2523f80572",
+    "canonicalSha1": "4ac5721683d0e0b6bbb561b58a71740845dceea9"
+  },
+  "launch": {
+    "entryPoint": 2149849088,
+    "entryRomOffset": 4096
+  },
+  "status": "v0.1-target-under-development"
+}

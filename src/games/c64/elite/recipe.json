@@ -1,0 +1,16 @@
+{
+  "id": "elite-pwx-pal",
+  "title": "Elite",
+  "system": "c64",
+  "timing": "pal-6569",
+  "mediaDirectory": "roms/c64/elite",
+  "media": [
+    {
+      "name": "ELITE-E.D64",
+      "sha256": "64eba8c56e2307bcf072e75c8f79ba276954c6f3c7731e1deddd6967b1d0eb84",
+      "boot": true
+    }
+  ],
+  "launch": { "file": "ELITE V1.1+", "entry": 2059 },
+  "status": "experimental-partial-title"
+}
