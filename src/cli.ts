@@ -21,6 +21,7 @@ import { rebuildQueue } from './build/rebuild.js';
 import { siteDirectory, workDirectory } from './paths.js';
 import { watch } from 'node:fs';
 import { bundleMedia, importMedia } from './cli/media-bundle.js';
+import { deploySetup } from './cli/deploy-setup.js';
 import { identifyPaths, describeIdentification } from './cli/identify.js';
 import { bootSm64Graphics } from './games/n64/sm64/recovery/graphics.js';
 
@@ -41,7 +42,8 @@ Build and play:
 
 CI media inputs:
   roms media bundle [--out <file>]      Prepare the pinned inputs for CI
-  roms media import <bundle.json.gz>    Verify and restore exact recipe inputs
+  roms media import <bundle>            Verify and restore exact recipe inputs (sealed: MEDIA_KEY)
+  roms deploy-setup [--domain <host>]   Seal media for CI, set MEDIA_KEY, publish Pages from Actions
 
 Explore the assembly:
   roms extract <disk.d64> --out <dir>   Extract files with source offsets
@@ -144,6 +146,10 @@ async function main(): Promise<void> {
     console.log(
       flags.json ? JSON.stringify(reports, null, 2) : describeIdentification(reports).trimEnd(),
     );
+    return;
+  }
+  if (command === 'deploy-setup') {
+    await deploySetup((message) => console.log(message), flags.domain);
     return;
   }
   if (command === 'media') {
