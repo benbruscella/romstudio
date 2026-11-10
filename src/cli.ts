@@ -35,7 +35,7 @@ Start with the original bytes:
 
 Build and play:
   roms dev [--port 4170]                Serve the system → game library
-  roms build [--domain <host>] [--base /path/] [--deploy]  Build game packages and dist/site
+  roms build [--deploy]                Build game packages and dist/site (works at any address)
   roms build-game <system/game>        Package one game with the current code
   roms verify-game <system/game>       Rerun recovery and original/static verification
   roms preview [--port 4170]            Serve the existing static site
@@ -43,7 +43,7 @@ Build and play:
 CI media inputs:
   roms media bundle [--out <file>]      Prepare the pinned inputs for CI
   roms media import <bundle>            Verify and restore exact recipe inputs (sealed: MEDIA_KEY)
-  roms deploy-setup [--domain <host>]   Seal media for CI, set MEDIA_KEY, publish Pages from Actions
+  roms deploy-setup [--domain <host>]   Seal media for CI, set MEDIA_KEY, publish Pages from Actions (and set its custom domain)
 
 Explore the assembly:
   roms extract <disk.d64> --out <dir>   Extract files with source offsets
@@ -93,7 +93,6 @@ function argumentsFor(args: string[]): { files: string[]; flags: Record<string, 
           '--port',
           '--title',
           '--system',
-          '--base',
           '--domain',
           '--until',
         ].includes(arg)
@@ -209,8 +208,6 @@ async function main(): Promise<void> {
         includeStudies: flags.deploy !== 'true',
         requireReady: flags.deploy === 'true',
         requireVerified: flags.deploy === 'true',
-        ...(flags.base ? { basePath: flags.base } : {}),
-        ...(flags.domain ? { domain: flags.domain } : {}),
         onProgress: (message) => console.error(message),
       });
     }
@@ -233,8 +230,6 @@ async function main(): Promise<void> {
           outputDirectory,
           rebuild: false,
           includeStudies: true,
-          ...(flags.base ? { basePath: flags.base } : {}),
-          ...(flags.domain ? { domain: flags.domain } : {}),
         });
       },
       (error) => console.error((error as Error).message),

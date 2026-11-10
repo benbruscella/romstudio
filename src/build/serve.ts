@@ -10,7 +10,7 @@ async function loadExport(root: string, manifestBytes: Buffer) {
   const manifest = JSON.parse(manifestBytes.toString()) as {
     files: Record<string, string>;
     verification: { referenceReplay: string };
-    routing?: { basePath: string; paths: string[] };
+    routing?: { paths: string[] };
   };
   if (
     manifest.verification?.referenceReplay !== 'passed' ||
@@ -97,16 +97,14 @@ export async function serveWeb(directory: string, port = 4173) {
       response.end();
       return;
     }
-    const basePath = bundle.routing?.basePath ?? '/';
-    if (basePath !== '/' && path.startsWith(basePath)) {
-      path = '/' + path.slice(basePath.length);
-    }
     if (path.endsWith('/')) {
       path += 'index.html';
     }
+    // Like GitHub Pages: a library route (a path that is not a file) gets
+    // the redirect page, which reopens the library at the site root.
     const route = path.replace(/^\//, '').replace(/\/index\.html$/, '');
-    if (bundle.routing?.paths.includes(route) && !bundle.files.has(path)) {
-      path = '/index.html';
+    if (route && bundle.routing?.paths.includes(route) && !bundle.files.has(path)) {
+      path = '/404.html';
     }
     // A rebuild publishes its manifest last. Adopt the entire verified bundle
     // together, so refreshing the page cannot silently retain an old export.
@@ -147,7 +145,7 @@ export async function serveWeb(directory: string, port = 4173) {
   }
   return {
     server,
-    url: `http://127.0.0.1:${address.port}${bundle.routing?.basePath ?? '/'}`,
+    url: `http://127.0.0.1:${address.port}/`,
     root,
   };
 }

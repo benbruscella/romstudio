@@ -4,9 +4,6 @@ inputs:
   media-key:
     description: The MEDIA_KEY secret that opens ci/rom-studio-media.sealed.
     required: true
-  domain:
-    description: Custom domain the site is built for (base /).
-    required: true
 runs:
   using: composite
   steps:
@@ -31,4 +28,4 @@ runs:
     # build --deploy verifies every game against its original for these sources.
     - name: Build verified static site
       shell: bash
-      run: npm run build -- --deploy --domain "${{ inputs.domain }}"
+      run: npm run build -- --deploy

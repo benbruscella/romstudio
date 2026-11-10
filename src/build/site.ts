@@ -25,14 +25,20 @@ export interface CatalogGame {
   /** Recipe media identities, for ROM Desk's /desk identification. */
   identities: { name: string; sha256: string }[];
 }
+export const pagesRedirect =
+  '<!doctype html><html lang="en"><meta charset="utf-8"><title>ROM Studio</title><p>Opening ROM Studio…</p>' +
+  "<script>const p=location.pathname.split('/'),base=location.hostname.endsWith('.github.io')&&p[1]?'/'+p[1]+'/':'/';" +
+  "location.replace(base+'?route='+encodeURIComponent(location.pathname+location.search));</script></html>";
+
 /** Assemble a static deployment from verified game files and content-addressed
- * source media. Recovery traces and tool/test code never enter this directory. */
+ * source media. Recovery traces and tool/test code never enter this directory.
+ * The site works at any address (a domain root or a folder such as
+ * /romstudio/): pages use relative paths and the library finds its base in
+ * the browser. */
 export async function buildSite(
   options: {
     outputDirectory?: string;
     rebuild?: boolean;
-    basePath?: string;
-    domain?: string;
     includeStudies?: boolean;
     requireReady?: boolean;
     /** Deploy: every package must have passed verification for its sources. */
@@ -41,19 +47,6 @@ export async function buildSite(
   } = {},
 ) {
   const directory = resolve(options.outputDirectory ?? siteDirectory);
-  const basePath = options.basePath ?? '/';
-  if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(basePath)) {
-    throw new Diagnostic(
-      'SITE_BASE',
-      'Base must be a root-relative folder path ending in /, for example /romstudio/.',
-    );
-  }
-  if (
-    options.domain &&
-    (!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(options.domain) || basePath !== '/')
-  ) {
-    throw new Diagnostic('SITE_DOMAIN', 'A custom domain needs a hostname and the root base /.');
-  }
   await mkdir(directory, { recursive: true });
   const sources = await gameSources();
   let oldFiles: Record<string, string> = {};
@@ -93,7 +86,8 @@ export async function buildSite(
     routes.add(gameRoute + '/desk');
     routes.add(gameRoute + '/learn');
     routes.add(gameRoute + '/learn/code');
-    const learning = await gameLearning(key, basePath + gameRoute);
+    // Learn links are relative to the site base; the library resolves them.
+    const learning = await gameLearning(key, gameRoute);
     for (const chapter of learning.chapters) {
       routes.add(gameRoute + '/learn/' + chapter.slug);
     }
@@ -255,35 +249,23 @@ export async function buildSite(
     games,
   };
   const compiled = fileURLToPath(new URL('../web/library/', import.meta.url));
-  await put(
-    'index.html',
-    (await readFile(join(repositoryRoot, 'src/web/library/index.html'), 'utf8')).replaceAll(
-      '__ROM_STUDIO_BASE__',
-      basePath,
-    ),
-  );
+  await put('index.html', await readFile(join(repositoryRoot, 'src/web/library/index.html')));
   await put('style.css', await readFile(join(repositoryRoot, 'src/web/library/style.css')));
   await put('player-embed.css', await readFile(join(repositoryRoot, 'src/web/embed.css')));
   for (const name of ['app.js', 'router.js', 'code.js', 'identify.js']) {
     await put(name, await readFile(join(compiled, name)));
   }
-  await put(
-    '404.html',
-    `<!doctype html><html lang="en"><meta charset="utf-8"><title>ROM Studio</title><p>Opening ROM Studio…</p><script src="${basePath}pages-redirect.js"></script></html>`,
-  );
-  await put(
-    'pages-redirect.js',
-    `const base=${JSON.stringify(basePath)};location.replace(base+'?route='+encodeURIComponent(location.pathname+location.search));`,
-  );
-  if (options.domain) {
-    await put('CNAME', options.domain + '\n');
-  }
+  // GitHub Pages serves this page for any unknown path, at any depth, so it
+  // can't reference files relatively. It finds the site base (a project
+  // site's first folder on *.github.io, otherwise the domain root) and
+  // reopens the library there with the requested route.
+  await put('404.html', pagesRedirect);
   await put('catalog.json', JSON.stringify(catalog, null, 2) + '\n');
   const manifest = {
     schemaVersion: 1,
     kind: 'romstudio-static-library',
     exportId: sha256(JSON.stringify(files)),
-    routing: { basePath, paths: [...routes] },
+    routing: { paths: [...routes] },
     verification: {
       referenceReplay: 'passed',
       scope:

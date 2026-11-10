@@ -52,13 +52,12 @@ The default URL is `http://127.0.0.1:4170/`. Choose a system, then **Learn** or 
 
 ```sh
 npm run build
-npm run build -- --base /romstudio/
 npm run cli -- build-game n64/sm64
 npm run cli -- verify-game n64/sm64
 npm run cli -- preview
 ```
 
-`build` packages every registered game with the current code, checks their manifests, includes hashed media and learning evidence, and writes `dist/site/` with experimental studies. `build-game` packages one game. Packaging reuses saved recovery captures; `verify-game` reruns one game's original recovery and original/static comparison and records the result, and `npm test` runs these for installed media. `--deploy`, used by CI, verifies every game (as `verify-game` does) instead of packaging from captures, excludes studies and rejects any required game that is unfinished or not verified for the current sources. `preview` serves the existing site using its configured base path.
+`build` packages every registered game with the current code, checks their manifests, includes hashed media and learning evidence, and writes `dist/site/` with experimental studies. `build-game` packages one game. Packaging reuses saved recovery captures; `verify-game` reruns one game's original recovery and original/static comparison and records the result, and `npm test` runs these for installed media. `--deploy`, used by CI, verifies every game (as `verify-game` does) instead of packaging from captures, excludes studies and rejects any required game that is unfinished or not verified for the current sources. `preview` serves the existing site at `/`; the same build also works under a folder such as `/romstudio/`.
 
 ### Selecting a platform version
 
@@ -112,6 +111,6 @@ Generated files belong under `dist/`. The old `.romkit/`, `exports/` and individ
 
 ## Pinned media for CI
 
-`roms media bundle` creates `dist/work/rom-studio-media.json.gz` from exactly the current pinned game inputs. `roms media import <bundle.json.gz>` validates identities, bounded sizes and hashes before restoring the expected files under roms. It never takes extraction paths from the bundle or overwrites different existing bytes. [Build and CI setup](BUILD.md) explains the owner-approved release asset used after a merge to main.
+`roms deploy-setup` seals the pinned inputs for CI; `roms media import` restores them after checking every hash. See [CI and deployment](BUILD.md#ci-pull-requests-and-main).
 
 `check` combines format verification, lint and types; `fix` applies the automatic formatting and lint fixes. Maintained JavaScript modules use `.js`, with package.json declaring `"type": "module"`; TypeScript compiles to those modules. The runtime version is pinned in `.nvmrc`.

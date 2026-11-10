@@ -14,8 +14,21 @@ const items = document.querySelector<HTMLElement>('#items')!,
 const description = document.querySelector<HTMLElement>('#description')!,
   eyebrow = document.querySelector<HTMLElement>('#eyebrow')!,
   crumbs = document.querySelector<HTMLElement>('#breadcrumbs')!;
-const base = document.querySelector<HTMLMetaElement>('meta[name="rom-studio-base"]')!.content;
+// app.js sits at the site root, so its folder is the base: "/" on a domain,
+// "/romstudio/" on a GitHub project site, wherever the site is served.
+const base = new URL('./', import.meta.url).pathname;
 const url = (path = '') => base + path;
+/** Relative links (the page's own, and Learn chapters') point at the site
+ * base, not at whatever deep route the address bar shows. */
+function resolveLinks(root: ParentNode): void {
+  for (const anchor of Array.from(root.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
+    const href = anchor.getAttribute('href')!;
+    if (!/^(?:[a-z][a-z0-9+.-]*:|\/|#)/i.test(href)) {
+      anchor.setAttribute('href', url(href.replace(/^\.\//, '')));
+    }
+  }
+}
+resolveLinks(document);
 const element = <K extends keyof HTMLElementTagNameMap>(
   tag: K,
   text?: string,
@@ -127,6 +140,7 @@ try {
     const article = element('article');
     article.className = 'prose';
     article.innerHTML = current.html;
+    resolveLinks(article);
     if (material.code.length) {
       article.append(element('h2', 'Read the source'));
       for (const source of material.code) {

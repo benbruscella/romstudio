@@ -17,7 +17,7 @@ Updated 9 November 2026. This is the current acceptance record, with earlier evi
 | SM64       | CPU/RSP/audio/graphics studies and one captured title-to-opening static replay                                | Build and verify the play tier; accept live controls, browser audio, full speed, saves and progression |
 | Learning   | Assembly → TypeScript views and selected checked named routines                                               | Deeper game explanations, structured recovery, data annotations and broader semantic coverage          |
 | Workbench  | ROM Desk implemented for all six games ([DESK.md](DESK.md)); stepping agrees with ordinary execution in tests | Owner review of the workbench in the browser                                                           |
-| Release    | Local only; no source push, input upload or deployment performed                                              | Complete six-game checks, review the concrete artifact, then obtain explicit owner approval            |
+| Release    | Merges to main deploy to GitHub Pages ([BUILD.md](BUILD.md#ci-pull-requests-and-main))                        | Owner review of the result, then tag v0.1.0                                                            |
 
 **All six games are accepted as working, and the ROM Desk workbench is implemented; the owner's review of the result is next.** Arcade, Saturn, Xbox, multiplayer and a shared MAMEKIT hardware interface are future possibilities, not additions to v0.1. The core ROM Desk, stepping and basic system diagrams are required for v0.1 and remain unfinished. [BLUESKY.md](BLUESKY.md) keeps advanced extensions separate from that committed scope.
 
@@ -125,7 +125,7 @@ Prettier, ESLint, EditorConfig and `.nvmrc` are configured. Maintained modules u
 
 Generated output belongs in `dist/tools/`, `dist/work/` and `dist/site/`; `.romkit/` and old `exports/` were removed. Games own their recipes, code and chapters under `src/games/<system>/<game>/`. Bounded SM64 boot source packages live under `analysis/startup/source-study/`, separate from the canonical browser package. [Architecture](ARCHITECTURE.md), [CLI](CLI.md) and [Build](BUILD.md) define these boundaries.
 
-The workflow checks PRs without publishing. Main updates after merge deploy only after format/lint/types, unit tests, approved pinned-media import, integration tests and the strict six-game build, which verifies every game against the original. **Merging to main therefore deploys** once these pass, unless the `github-pages` environment requires a reviewer. The ten-input media bundle was generated and re-imported with matching hashes. Uploading that bundle and the initial source push/deployment still await owner approval. Custom-domain builds use **romstud.io**; project-base `/romstudio/` remains supported.
+CI and deployment: [BUILD.md](BUILD.md#ci-pull-requests-and-main).
 
 ## Remaining release acceptance
 
@@ -135,4 +135,4 @@ The SM64 play tier is built: high-level Fast3D graphics, RDP drawing in a parall
 
 Complete ordinary controls, sustained play, loading/progression, restart/game-over paths and appropriate sound for all six games, plus the core workbench in [RELEASES.md](RELEASES.md). Finish the game explanations to the [educational standard](INSPIRATION.md); automatic instruction lifting alone is insufficient. Re-run checks and relevant real-media tests on the actual candidate, rebuild the production artifact and review Play/Learn/history routes, controls, sound, performance, mobile layout, hashes and documentation.
 
-Use [TESTING.md](TESTING.md) for that review. All six games are owner-accepted as working, with their documented limits. Independent whole-machine hardware parity remains unverified. **Prepare and verify locally; do not push v0.1 or deploy until the owner explicitly approves the concrete reviewed result.**
+Use [TESTING.md](TESTING.md) for that review. All six games are owner-accepted as working, with their documented limits. Independent whole-machine hardware parity remains unverified. Tagging v0.1.0 waits for the owner to approve the reviewed result.
