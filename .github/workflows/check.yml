@@ -95,3 +95,7 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/deploy-pages@v5
         id: deployment
+        with:
+          # The site is about 530 MB. GitHub usually syncs it in seconds, but
+          # it once stalled past the 10-minute default; allow 30 minutes.
+          timeout: 1800000
